@@ -18,4 +18,12 @@ print(df)
 # def get_unitary(x) --> U_ijkl,ijkl
 
 # def fun_to_minimize (x=U_ijkl,ijkl, param=a_ijkl, q1, q2, a_il) --> min (p - 1)^2
+# given a U (this is the x to check):
+#   a_ijkl - matrix 16 x N(users)
+#   a_il - matrix 4 x N(users)
+# for each user, compute error (p-1)^2
+# return sum of errors over users
+# in (Unitary), out (sum of errors over users)
 
+# def find_optimal_u (x0=I) --> optimal U
+# run over many U's and take the minimal error
