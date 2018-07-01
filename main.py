@@ -33,12 +33,11 @@ def quantum_coefficients(df):
     return df
 
 # def join 2+2=4 qubits (a_ij, a_kl) --> a_ijkl
-
 def join(psi_ij, psi_kl):
     '''
     Taking to psi and return the thier tensor product. (a_ij, a_kl) --> a_ijkl
-    :param psi_ij:
-    :param psi_kl:
+    :param psi_ij: psi in the form: np.array([a00, a01, a10, a11])
+    :param psi_kl: psi in the form: np.array([a00, a01, a10, a11])
     :return:
     '''
     # a00, a01, a10, a11 =
@@ -52,14 +51,21 @@ def join(psi_ij, psi_kl):
     return psi_ijkl
 
 # def trace (a_ijkl, q1, q2) [q1=2, q2=3] --> rho_il,il
-# tracing psi_ijkl --> rho_il,il. note: in ptrace from QuTip the [i,l] you insert is the [i,l] you left with after the partial trace.
+# tracing psi_ijkl --> rho_il,il.
+# note: osi_ijkl - Qobj from QuTip
+#       In ptrace from QuTip the [i,l] you insert is the [i,l] you left with after the partial trace.
 rho_il = psi_ijkl.ptrace([i,l])
 
 # def perform_unitary (a_ijkl, U_ijkl,ijkl) --> a'_ijkl
+# U_ijkl, a_ijkl - Qobj fron QuTip
+a1_ijkl = U_ijkl * a_ijkl
 
 # def new_two_qubit (a_ijkl, U_ijkl,ijkl, q1, q2) --> Tr_q1,q2 U*a --> rho_il,il [perform_unitary, trace]
+(U_ijkl * a_ijkl).ptrace([i,l])
 
 # def overlap (rho_il,il, a_il) --> p = <psi_il | rho_il | psi_il>
+# rho, psi - Qobj fron QuTip
+p = psi_il * rho_il * psi_il
 
 # def get_unitary(x) --> U_ijkl,ijkl
 
