@@ -67,7 +67,12 @@ a1_ijkl = U_ijkl * a_ijkl
 # rho, psi - Qobj fron QuTip
 p = psi_il * rho_il * psi_il
 
-# def get_unitary(x) --> U_ijkl,ijkl
+def get_unitary(x): # --> U_ijkl,ijkl
+    # x is a 256x1 np array
+    M = np.reshape(x, int(np.sqrt(x.shape[0])), int(np.sqrt(x.shape[0])))
+    [U, ~] = np.linalg.qr(M)
+    return U
+
 
 # def fun_to_minimize (x=U_ijkl,ijkl, param=a_ijkl, q1, q2, a_il) --> min (p - 1)^2
 # given a U (this is the x to check):
