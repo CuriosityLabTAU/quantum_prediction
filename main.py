@@ -52,7 +52,7 @@ def join(psi_ij, psi_kl):
 
 # def trace (a_ijkl, q1, q2) [q1=2, q2=3] --> rho_il,il
 # tracing psi_ijkl --> rho_il,il.
-# note: osi_ijkl - Qobj from QuTip
+# note: psi_ijkl - Qobj from QuTip
 #       In ptrace from QuTip the [i,l] you insert is the [i,l] you left with after the partial trace.
 rho_il = psi_ijkl.ptrace([i,l])
 
