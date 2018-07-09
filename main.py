@@ -2,9 +2,7 @@ import pandas as pd
 import numpy as np
 from qutip import *
 from tools import *
-
-df = pd.read_csv('data/new_dataframe.csv', sep='\t')
-print(df.head())
+from pprint import pprint
 
 # def quantum_model(p1, p2, p12) --> a_ij
 def quantum_coefficients(df):
@@ -35,7 +33,7 @@ def quantum_coefficients(df):
 # def join 2+2=4 qubits (a_ij, a_kl) --> a_ijkl
 def join(psi_ij, psi_kl):
     '''
-    Taking to psi and return the thier tensor product. (a_ij, a_kl) --> a_ijkl
+    Taking to psi and return their tensor product. (a_ij, a_kl) --> a_ijkl
     :param psi_ij: psi in the form: np.array([a00, a01, a10, a11])
     :param psi_kl: psi in the form: np.array([a00, a01, a10, a11])
     :return:
@@ -70,7 +68,7 @@ p = psi_il * rho_il * psi_il
 def get_unitary(x): # --> U_ijkl,ijkl
     # x is a 256x1 np array
     M = np.reshape(x, int(np.sqrt(x.shape[0])), int(np.sqrt(x.shape[0])))
-    [U, ~] = np.linalg.qr(M)
+    [U, _] = np.linalg.qr(M)
     return U
 
 
@@ -84,3 +82,19 @@ def get_unitary(x): # --> U_ijkl,ijkl
 
 # def find_optimal_u (x0=I) --> optimal U
 # run over many U's and take the minimal error
+
+
+
+
+def main():
+    df = pd.read_csv('data/new_dataframe.csv', sep='\t')
+    print(df.shape)
+    for row in range(df.shape[0]):
+        qi, qj = df.loc[row, ['q1', 'q2']]
+        psi_ij = df.loc[row, ['a00', 'a01', 'a10', 'a11']].values
+        [qk, ql], _ = unasked_qubits(df.loc[row, ['q1', 'q2']])
+        # rho_il = psi_ijkl.ptrace([qi, ql])
+        pprint(1)
+
+if __name__ == '__main__':
+    main()

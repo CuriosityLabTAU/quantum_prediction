@@ -23,3 +23,15 @@ def ndarray2Qobj(psi_vec, typ = 'vec', norm=False):
     dimensions = [d1, d2] # for the Qobj
     psi.dims = dimensions
     return psi
+
+
+def unasked_qubits(asked_qubits):
+    '''
+    :param asked_qubits: Which qubits were asked in the question
+    :return: not_asked - Which qubits weren't asked in the question.
+             ordr: order of the qubits in the question.
+    '''
+    qubits = np.array([0, 1, 2, 3])
+    not_asked = np.delete(qubits, asked_qubits - 1)
+    ordr = np.append(asked_qubits - 1, not_asked)
+    return not_asked+1, ordr
