@@ -89,14 +89,18 @@ def get_unitary(x):     # --> U_ijkl,ijkl
 
 def fun_to_min(x, psi_ijkl, q_mn, psi_mn):
     U = get_unitary(x)
-
+    # x = U.full().real
     psi_tag_ijkl = U * psi_ijkl
     rho_mn = psi_tag_ijkl.ptrace([q_mn[0], q_mn[1]])
 
     p = psi_mn.dag() * rho_mn * psi_mn  # overlap between them
     p = (1.0 - p[0][0][0].real) ** 2    # want to maximize overlap == minimize 1-overlap
-    print(p)
     return p
+
+def cons_to_min(x):
+    x = np.matrix(x.reshape([16,16]))
+    I = np.dot(x, x.getH())
+    return np.sum(I - np.eye(16, 16))
 
 
 x_eye = np.eye(16, 16).reshape(256)
@@ -106,8 +110,6 @@ x_eye = np.eye(16, 16).reshape(256)
 def main():
     df = pd.read_csv('data/new_dataframe.csv', sep='\t', index_col=0)
     df = quantum_coefficients(df)   # get the a_ij
-
-    print(df.shape)
 
     # per user
     for user in df['user'].unique():
@@ -132,8 +134,8 @@ def main():
         res = minimize(fun_to_min, x_eye, method='SLSQP', tol=1e-6, args=(psi_ijkl, q_mn, psi_mn))
         final_U = ndarray2Qobj(res.x.reshape([16,16]), typ='dm')
         check_unitary = final_U * final_U.conj()
-        print(res.fun)
-        print(res.x.reshape([16,16]))
+        # print(res.fun)
+        # print(res.x.reshape([16,16]))
         print(check_unitary)
         break
 
