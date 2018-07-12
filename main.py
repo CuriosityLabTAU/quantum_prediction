@@ -70,9 +70,9 @@ def join(psi_ij, psi_kl):
 def get_unitary(x):     # --> U_ijkl,ijkl
     # x is a 256x1 np array
     M = np.reshape(x, [int(np.sqrt(x.shape[0])), int(np.sqrt(x.shape[0]))])
-    [U, _] = np.linalg.qr(M)
-    U = ndarray2Qobj(U, typ='dm')
-    return U
+    [Q, _] = np.linalg.qr(M)
+    Q = ndarray2Qobj(Q, typ='dm')
+    return Q
 
 
 # def fun_to_minimize (x=U_ijkl,ijkl, param=a_ijkl, q1, q2, a_il) --> min (p - 1)^2
@@ -95,12 +95,29 @@ def fun_to_min(x, psi_ijkl, q_mn, psi_mn):
 
     p = psi_mn.dag() * rho_mn * psi_mn  # overlap between them
     p = (1.0 - p[0][0][0].real) ** 2    # want to maximize overlap == minimize 1-overlap
-    print(p)
+    # print(p)
     return p
 
 
+def fun_to_min_list(x, psi_ijkl, q_mn, psi_mn):
+    U = get_unitary(x)
+
+    p = []
+    for i in range(len(psi_ijkl)):
+        psi_tag_ijkl = U * psi_ijkl[i]
+        rho_mn = psi_tag_ijkl.ptrace([q_mn[i][0], q_mn[i][1]])
+
+        p_i = psi_mn[i].dag() * rho_mn * psi_mn[i]  # overlap between them
+        p.append((1.0 - p_i[0][0][0].real) ** 2)    # want to maximize overlap == minimize 1-overlap
+
+    mean_p = np.mean(p)
+    # print(p)
+    return mean_p
+
 x_eye = np.eye(16, 16).reshape(256)
 # x_eye = np.ones([16, 16]).reshape(256)
+x_rand = np.random.rand(256,1)
+U_rand = get_unitary(x_rand)
 
 
 def main():
@@ -109,8 +126,21 @@ def main():
 
     print(df.shape)
 
-    # per user
-    for user in df['user'].unique():
+    # user_same_q = ...
+    for pos in df[(df.qn == 2.)].pos.unique():
+        user_same_q = df[(df.qn == 2.) & (df.pos == pos)]
+
+    user_same_q = df[(df.qn == 2.) & (df.pos == 5.)]
+    n_user = len(user_same_q)
+    n_train = int(0.9 * n_user)
+    user_rand_order = np.random.permutation(np.arange(n_user))
+    user_train = user_rand_order[:n_train]
+    user_test = user_rand_order[n_train:]
+
+    psi_ijkl_list = []
+    q_mn_list = []
+    psi_mn_list = []
+    for user in user_train:
         # get a_ij of q_pos_1
         a_ij = df.loc[(df.user == user) & (df.pos == 0), ['a00', 'a01', 'a10', 'a11']].values[0]
         if True in np.isnan(a_ij):
@@ -129,13 +159,19 @@ def main():
             continue
         psi_mn = ndarray2Qobj(a_mn)
 
-        res = minimize(fun_to_min, x_eye, method='SLSQP', tol=1e-6, args=(psi_ijkl, q_mn, psi_mn))
-        final_U = ndarray2Qobj(res.x.reshape([16,16]), typ='dm')
-        check_unitary = final_U * final_U.conj()
-        print(res.fun)
-        print(res.x.reshape([16,16]))
-        print(check_unitary)
-        break
+        psi_ijkl_list.append(psi_ijkl)
+        q_mn_list.append(q_mn)
+        psi_mn_list.append(psi_mn)
+
+    res = minimize(fun_to_min, x_eye, method='SLSQP', tol=1e-6, args=(psi_ijkl_list, q_mn_list, psi_mn_list))
+    final_x = res.x
+    final_U = get_unitary(final_x)
+    check_unitary = final_U * final_U.dag()
+    print(res.fun)
+    # print(final_U)
+    # print(check_unitary)
+
+
 
 
 
