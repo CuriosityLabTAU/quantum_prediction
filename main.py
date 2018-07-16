@@ -67,6 +67,41 @@ def join(psi_ij, psi_kl):
 # p = psi_il * rho_il * psi_il
 
 
+def calc_prob(qbt, fallacy, U, psi_ijkl_list, q_mn):
+    '''
+    Predict the probability
+    :param qbt:
+    :param fallacy:
+    :param U:
+    :param psi_ijkl:
+    :return:
+    '''
+
+    post_state = None
+    if len(qbt) == 1:
+        if qbt[0] == i:
+            post_state = np.array([0, 1, 0, 1])
+        elif qbt[0] == j:
+            post_state = np.array([0, 0, 1, 1])
+    elif len(qbt) == 2:
+        if fallacy == 1:
+            post_state = np.array([0, 0, 0, 1])
+        elif fallacy == 2:
+            post_state = np.array([0, 1, 1, 1])
+    if post_state is None:
+        print('Error !!!!')
+        return
+
+    post_state = ndarray2Qobj(post_state, norm=True)
+
+    for psi_ijkl in psi_ijkl_list:
+        psi_ijkl_tilde = U * psi_ijkl
+        rho_mn_tilde = psi_ijkl_tilde.ptrace([q_mn[0], q_mn[1]])
+
+        prob_tilde = post_state.dag() * rho_mn_tilde * post_state
+        # todo: continue here
+
+
 def get_unitary(x):     # --> U_ijkl,ijkl
     # x is a 256x1 np array
     M = np.reshape(x, [int(np.sqrt(x.shape[0])), int(np.sqrt(x.shape[0]))])
@@ -121,16 +156,21 @@ U_rand = get_unitary(x_rand)
 
 
 def main():
-    df = pd.read_csv('data/new_dataframe.csv', sep='\t', index_col=0)
+    df = pd.read_csv('data/new_dataframe.csv', sep='\t', index_col=0) # there is a problem with the DF i need to check what. something with the pos and qn.
     df = quantum_coefficients(df)   # get the a_ij
 
     print(df.shape)
 
-    # user_same_q = ...
-    for pos in df[(df.qn == 2.)].pos.unique():
-        user_same_q = df[(df.qn == 2.) & (df.pos == pos)] #
+    user_same_q_list = []
+    for qn in df[(df.qn == 2.)].pos.unique():
+        user_same_q_temp = df[(df.pos == 2.) & (df.qn == qn)] #
+        user_same_q_list.append(user_same_q_temp)
 
-    user_same_q = df[(df.qn == 2.) & (df.pos == 5.)]
+    # for user_same_q in user_same_q_list:
+    user_same_q = user_same_q_list[0]
+
+
+    user_same_q = df[(df.qn == 3.) & (df.pos == 2.)] # just to check if this working
     n_user = len(user_same_q)
     n_train = int(0.9 * n_user)
     user_rand_order = np.random.permutation(np.arange(n_user))
