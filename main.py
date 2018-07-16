@@ -128,7 +128,7 @@ def main():
 
     # user_same_q = ...
     for pos in df[(df.qn == 2.)].pos.unique():
-        user_same_q = df[(df.qn == 2.) & (df.pos == pos)]
+        user_same_q = df[(df.qn == 2.) & (df.pos == pos)] #
 
     user_same_q = df[(df.qn == 2.) & (df.pos == 5.)]
     n_user = len(user_same_q)
