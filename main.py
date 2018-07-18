@@ -77,11 +77,12 @@ def calc_prob(qbt, fallacy, U, psi_ijkl_list, q_mn):
     :return:
     '''
 
+    prob_tilde = []
     post_state = None
     if len(qbt) == 1:
-        if qbt[0] == i:
+        if qbt[0] == 0:
             post_state = np.array([0, 1, 0, 1])
-        elif qbt[0] == j:
+        elif qbt[0] == 1:
             post_state = np.array([0, 0, 1, 1])
     elif len(qbt) == 2:
         if fallacy == 1:
@@ -93,13 +94,19 @@ def calc_prob(qbt, fallacy, U, psi_ijkl_list, q_mn):
         return
 
     post_state = ndarray2Qobj(post_state, norm=True)
+    plus_state = ndarray2Qobj(np.array([1, 1, 1, 1]), norm=True)
+
+    # todo: add plus state to the other qubit
+
 
     for psi_ijkl in psi_ijkl_list:
         psi_ijkl_tilde = U * psi_ijkl
         rho_mn_tilde = psi_ijkl_tilde.ptrace([q_mn[0], q_mn[1]])
+        temp_rho_mn_tilde = post_state.dag() * rho_mn_tilde * post_state
+        p = plus_state.dag() * temp_rho_mn_tilde * plus_state
+        prob_tilde.append(p[0][0][0].real)
 
-        prob_tilde = post_state.dag() * rho_mn_tilde * post_state
-        # todo: continue here
+    return prob_tilde
 
 
 def get_unitary(x):     # --> U_ijkl,ijkl
@@ -155,32 +162,18 @@ x_rand = np.random.rand(256,1)
 U_rand = get_unitary(x_rand)
 
 
-def main():
-    df = pd.read_csv('data/new_dataframe.csv', sep='\t', index_col=0) # there is a problem with the DF i need to check what. something with the pos and qn.
-    df = quantum_coefficients(df)   # get the a_ij
-
-    print(df.shape)
-
-    user_same_q_list = []
-    for qn in df[(df.qn == 2.)].pos.unique():
-        user_same_q_temp = df[(df.pos == 2.) & (df.qn == qn)] #
-        user_same_q_list.append(user_same_q_temp)
-
-    # for user_same_q in user_same_q_list:
-    user_same_q = user_same_q_list[0]
-
-
-    user_same_q = df[(df.qn == 3.) & (df.pos == 2.)] # just to check if this working
-    n_user = len(user_same_q)
-    n_train = int(0.9 * n_user)
-    user_rand_order = np.random.permutation(np.arange(n_user))
-    user_train = user_rand_order[:n_train]
-    user_test = user_rand_order[n_train:]
-
+def make_users_qvariables(df, users2run):
+    '''
+    Return parameters to calculate probability
+    :param df:
+    :param users2run:
+    :return: psi_ijkl_list, q_mn_list, psi_mn_list, user_without_nan
+    '''
     psi_ijkl_list = []
     q_mn_list = []
     psi_mn_list = []
-    for user in user_train:
+    user_without_nan = []
+    for user in users2run:
         # get a_ij of q_pos_1
         a_ij = df.loc[(df.user == user) & (df.pos == 0), ['a00', 'a01', 'a10', 'a11']].values[0]
         if True in np.isnan(a_ij):
@@ -202,14 +195,62 @@ def main():
         psi_ijkl_list.append(psi_ijkl)
         q_mn_list.append(q_mn)
         psi_mn_list.append(psi_mn)
+        user_without_nan.append(user)
 
-    res = minimize(fun_to_min, x_eye, method='SLSQP', tol=1e-6, args=(psi_ijkl_list, q_mn_list, psi_mn_list))
-    final_x = res.x
-    final_U = get_unitary(final_x)
-    check_unitary = final_U * final_U.dag()
-    print(res.fun)
-    # print(final_U)
-    # print(check_unitary)
+    return psi_ijkl_list, q_mn_list, psi_mn_list, user_without_nan
+
+def main():
+    df = pd.read_csv('data/new_dataframe.csv', index_col=0) # todo there is a problem with the DF i need to check what. something with the pos and qn.
+    df = quantum_coefficients(df)   # get the a_ij
+
+    print(df.shape)
+
+    user_same_q_list = []
+    for qn in df[(df.qn == 2.)].pos.unique():
+        user_same_q_temp = df[(df.pos == 2.) & (df.qn == qn)] #
+        user_same_q_list.append(user_same_q_temp)
+
+    for user_same_q in user_same_q_list:
+    # user_same_q = df[(df.qn == 3.) & (df.pos == 2.)] # just for checking
+
+        current_fallacy = user_same_q.fal.tolist()[0]
+
+        user_same_q = user_same_q.loc[~user_same_q.a00.isna(), :] # Using only the questions that we were able to calculate a00
+        n_user = len(user_same_q)
+        n_train = int(0.9 * n_user)
+        user_rand_order = np.random.permutation(np.arange(n_user))
+        user_rand_order = np.array(user_same_q.user.tolist())[user_rand_order]
+        user_train = user_rand_order[:n_train]
+        user_test = user_rand_order[n_train:]
+
+        psi_ijkl_list, q_mn_list, psi_mn_list, user_without_nan_train = make_users_qvariables(df, user_train)
+
+        # res = minimize(fun_to_min, x_eye, method='SLSQP', tol=1e-6, args=(psi_ijkl_list, q_mn_list, psi_mn_list))
+        res = minimize(fun_to_min_list, x_eye, method='SLSQP', tol=1e-6, args=(psi_ijkl_list, q_mn_list, psi_mn_list))
+
+        final_x = res.x
+        final_U = get_unitary(final_x)
+        check_unitary = final_U * final_U.dag()
+
+        psi_ijkl_list_test, q_mn_list_test, psi_mn_list_test, user_without_nan_test  = make_users_qvariables(df, user_test)
+
+        pi_tilde = calc_prob([0], current_fallacy, final_U, psi_ijkl_list_test, q_mn_list[0])
+        pj_tilde = calc_prob([1], current_fallacy, final_U, psi_ijkl_list_test, q_mn_list[0])
+        pij_tilde = calc_prob([1, 2], current_fallacy, final_U, psi_ijkl_list_test, q_mn_list[0])
+
+        user_same_q_test = user_same_q[user_same_q.user.isin(user_without_nan_test)]
+
+        probs = np.array([pi_tilde, pj_tilde, pij_tilde]).T
+        probs_df = pd.DataFrame(data=probs, columns=['p1t', 'p2t', 'p12t'], index=user_same_q_test.index)
+        user_same_q_test = pd.concat([user_same_q_test, probs_df], axis=1)
+
+        dist  = np.sum(np.abs(user_same_q_test['p1'] - user_same_q_test['p1t']))
+        dist += np.sum(np.abs(user_same_q_test['p2'] - user_same_q_test['p2t']))
+        dist += np.sum(np.abs(user_same_q_test['p12'] - user_same_q_test['p12t']))
+        print(dist, dist/ user_same_q_test.shape[0])
+        print(res.fun)
+        # print(final_U)
+        # print(check_unitary)
 
 
 
