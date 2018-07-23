@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 from qutip import *
 from tools import *
-from pprint import pprint
 from scipy.optimize import minimize
 
 # def quantum_model(p1, p2, p12) --> a_ij
@@ -244,11 +243,13 @@ def main():
         probs_df = pd.DataFrame(data=probs, columns=['p1t', 'p2t', 'p12t'], index=user_same_q_test.index)
         user_same_q_test = pd.concat([user_same_q_test, probs_df], axis=1)
 
-        dist  = np.sum(np.abs(user_same_q_test['p1'] - user_same_q_test['p1t']))
-        dist += np.sum(np.abs(user_same_q_test['p2'] - user_same_q_test['p2t']))
-        dist += np.sum(np.abs(user_same_q_test['p12'] - user_same_q_test['p12t']))
-        print(dist, dist/ user_same_q_test.shape[0])
-        print(res.fun)
+        dist_p1  = np.abs(user_same_q_test['p1'] - user_same_q_test['p1t'])
+        dist_p2  = np.abs(user_same_q_test['p2'] - user_same_q_test['p2t'])
+        dist_p12 = np.abs(user_same_q_test['p12'] - user_same_q_test['p12t'])
+        print('p1 distance, sum over all users: %.2f, \nmean over all users: %.2f' % (np.sum(dist_p1), np.mean(dist_p1)))
+        print('p2 distance, sum over all users: %.2f, \nmean over all users: %.2f' % (np.sum(dist_p2), np.mean(dist_p2)))
+        print('p12 distance, sum over all users: %.2f, \nmean over all users: %.2f' % (np.sum(dist_p12), np.mean(dist_p12)))
+        print('func_value = ', res.fun)
         # print(final_U)
         # print(check_unitary)
 
