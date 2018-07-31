@@ -209,13 +209,15 @@ def main():
 
     print(df.shape)
 
-    user_same_q_list = []
+    user_same_q_list = {}
     for qn in df[(df.qn == 2.)].pos.unique():
         user_same_q_temp = df[(df.pos == 2.) & (df.qn == qn)] #
-        user_same_q_list.append(user_same_q_temp)
+        # user_same_q_list.append(user_same_q_temp)
+        user_same_q_list[qn] = user_same_q_temp
 
-    for user_same_q in user_same_q_list:
     # user_same_q = df[(df.qn == 3.) & (df.pos == 2.)] # just for checking
+    for qn, user_same_q in user_same_q_list.items(  ):
+        print('Prediction for position = 2. and question number  = %1.f'%(qn))
 
         current_fallacy = user_same_q.fal.tolist()[0]
 
@@ -251,9 +253,10 @@ def main():
         dist_p1  = np.abs(user_same_q_test['p1'] - user_same_q_test['p1t'])
         dist_p2  = np.abs(user_same_q_test['p2'] - user_same_q_test['p2t'])
         dist_p12 = np.abs(user_same_q_test['p12'] - user_same_q_test['p12t'])
-        print('p1 distance, sum over all users: %.2f, \nmean over all users: %.2f' % (np.sum(dist_p1), np.mean(dist_p1)))
-        print('p2 distance, sum over all users: %.2f, \nmean over all users: %.2f' % (np.sum(dist_p2), np.mean(dist_p2)))
-        print('p12 distance, sum over all users: %.2f, \nmean over all users: %.2f' % (np.sum(dist_p12), np.mean(dist_p12)))
+        user_same_q_test.to_csv('user_same_q_test' + str(int(qn)) + '.csv')
+        print('mean over all users: %.2f' % (np.mean(dist_p1)))
+        print('mean over all users: %.2f' % (np.mean(dist_p2)))
+        print('mean over all users: %.2f' % (np.mean(dist_p12)))
         print('func_value = ', res.fun)
         # print(final_U)
         # print(check_unitary)
