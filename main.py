@@ -200,6 +200,11 @@ def make_users_qvariables(df, users2run):
 
 def main():
     df = pd.read_csv('data/new_dataframe.csv', index_col=0) # todo there is a problem with the DF i need to check what. something with the pos and qn.
+    # # normalizing the probabilities for quantum calculations.
+    # df.p1 = df.p1/4.
+    # df.p2 = df.p2/4.
+    # df.p12 = df.p12/4.
+
     df = quantum_coefficients(df)   # get the a_ij
 
     print(df.shape)
