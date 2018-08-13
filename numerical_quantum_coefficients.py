@@ -1,14 +1,9 @@
 from scipy.optimize import minimize
-
+import numpy as np
 
 # function to minimize
 def fun_to_minimize(x, p, fallacy=1):
-    pA = abs(x[2] + x[3]) ** 2 / (abs(x[2] + x[3]) ** 2 + abs(x[0] + x[1]) ** 2)
-    pB = abs(x[1] + x[3]) ** 2 / (abs(x[1] + x[3]) ** 2 + abs(x[0] + x[2]) ** 2)
-    if fallacy == 1:
-        pA_B = abs(x[3]) ** 2 / (abs(x[3]) ** 2 + abs(x[0] + x[1] + x[2]) ** 2)
-    elif fallacy == 2:
-        pA_B = abs(x[1] + x[2] + x[3]) ** 2 / (abs(x[1] + x[2] + x[3]) ** 2 + abs(x[0]) ** 2)
+    pA, pB, pA_B = calculate_p(x, fallacy)
 
     error = (pA - p['A']) ** 2 + \
             (pB - p['B']) ** 2 + \
@@ -22,30 +17,53 @@ def fun_to_constraint(x):
     return norm
 
 
+def calculate_p(x, fallacy=1):
+    pA = abs(x[2] + x[3]) ** 2 / (abs(x[2] + x[3]) ** 2 + abs(x[0] + x[1]) ** 2)
+    pB = abs(x[1] + x[3]) ** 2 / (abs(x[1] + x[3]) ** 2 + abs(x[0] + x[2]) ** 2)
+    if fallacy == 1:
+        pA_B = abs(x[3]) ** 2 / (abs(x[3]) ** 2 + abs(x[0] + x[1] + x[2]) ** 2)
+    elif fallacy == 2:
+        pA_B = abs(x[1] + x[2] + x[3]) ** 2 / (abs(x[1] + x[2] + x[3]) ** 2 + abs(x[0]) ** 2)
+    return pA, pB, pA_B
 
-def quantum_coefficients(df):
+
+def numerical_quantum_coefficients(df):
     '''
     Calculating the coefficents based on the probabilities. (p1, p2, p12) --> a_ij
     :param df: dataframe with all the data.
     :return: df + a_ij
     '''
 
-    df_ = df[df['pos'] <= 2]
 
-    for d in df_.iterrow():
-        print(d)
+    df = df.assign(**{'a10': np.nan, 'a01': np.nan, 'a11': np.nan, 'a00': np.nan})
+    df = df.assign(**{'check_pA': np.nan, 'check_pB': np.nan, 'check_pA_B': np.nan})
 
+    for d_iter in df.iterrows():
+        d = d_iter[1]
+        p = {
+            'A': d['p1'],
+            'B': d['p2'],
+            'A_B': d['p12']
+        }
+
+        fal = d['fal']
+
+        x0 = [0.5, 0.5, 0.5, 0.5]
+        cons = ({'type': 'eq', 'fun': fun_to_constraint})
+        # run minimization
+        res_temp = minimize(fun_to_minimize, x0, args=(p, fal),
+                            method='SLSQP', bounds=None, constraints=cons,
+                            options={'disp': False})
+
+        print(res_temp.x, res_temp.fun)
+
+        d[['a00','a01' ,'a10', 'a11']] = res_temp.x
+        d[['check_pA', 'check_pB', 'check_pA_B']] = calculate_p(res_temp.x, fal)
+
+
+    return df
     #
-    #
-    #
-    # # run minimization
-    # res_temp = minimize(fun_to_minimize, x0, args=(psi, p1, p2, p12, q1, q2, fal),
-    #                     method='SLSQP', bounds=None, constraints=fun_to_constraint(),
-    #                     options={'disp': False})
-    #
-    # print(res_temp.x, res_temp.fun)
-    #
-    # df = df.assign(**{'a10': np.nan, 'a01': np.nan, 'a11': np.nan, 'a00': np.nan})
+
     #
     # # Conjunction
     # df.loc[df.fal == 1., 'a10'] = np.sqrt(2 * df[df.fal == 1.].p1) - np.sqrt(df[df.fal == 1.].p12)
