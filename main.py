@@ -7,6 +7,7 @@ from prediction import *
 
 
 
+
 def main():
     # df = pd.read_csv('data/new_dataframe.csv', index_col=0) # todo there is a problem with the DF i need to check what. something with the pos and qn.
     # # # normalizing the probabilities for quantum calculations.
@@ -55,20 +56,28 @@ def main():
         pj_tilde = calc_prob([1], current_fallacy, final_U, psi_ijkl_list_test, q_mn_list[0])
         pij_tilde = calc_prob([1, 2], current_fallacy, final_U, psi_ijkl_list_test, q_mn_list[0])
 
+        I = qeye(16)
+        I.dims = final_U.dims
+        pi_tilde_I = calc_prob([0], current_fallacy, I, psi_ijkl_list_test, q_mn_list[0])
+        pj_tilde_I = calc_prob([1], current_fallacy, I, psi_ijkl_list_test, q_mn_list[0])
+        pij_tilde_I = calc_prob([1, 2], current_fallacy, I, psi_ijkl_list_test, q_mn_list[0])
+
         user_same_q_test = user_same_q[user_same_q.user.isin(user_without_nan_test)]
 
         probs = np.array([pi_tilde, pj_tilde, pij_tilde]).T
-        probs_df = pd.DataFrame(data=probs, columns=['p1t', 'p2t', 'p12t'], index=user_same_q_test.index)
+        probs_df = pd.DataFrame(data=probs, columns=['p1_U', 'p2_U', 'p12_U'], index=user_same_q_test.index)
         user_same_q_test = pd.concat([user_same_q_test, probs_df], axis=1)
 
-        dist_p1  = np.abs(user_same_q_test['p1'] - user_same_q_test['p1t'])
-        dist_p2  = np.abs(user_same_q_test['p2'] - user_same_q_test['p2t'])
-        dist_p12 = np.abs(user_same_q_test['p12'] - user_same_q_test['p12t'])
+        dist_p1U  = np.abs(user_same_q_test['p1'] - user_same_q_test['p1_U'])
+        dist_p2U  = np.abs(user_same_q_test['p2'] - user_same_q_test['p2_U'])
+        dist_p12U = np.abs(user_same_q_test['p12'] - user_same_q_test['p12_U'])
         user_same_q_test.to_csv('user_same_q_test' + str(int(qn)) + '.csv')
-        print('mean over all users: %.2f' % (np.mean(dist_p1)))
-        print('mean over all users: %.2f' % (np.mean(dist_p2)))
-        print('mean over all users: %.2f' % (np.mean(dist_p12)))
-        print('func_value = ', res.fun)
+        print('(True probabilities) - (probabilities predicted by unitary transformation)')
+        print('<|p1_tilde - p1|>: %.2f'  % (np.mean(dist_p1U)))
+        print('<|p2_tilde - p2|>: %.2f'  % (np.mean(dist_p2U)))
+        print('<|p3_tilde - p12|>: %.2f' % (np.mean(dist_p12U)))
+
+
         # print(final_U)
         # print(check_unitary)
 
