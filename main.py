@@ -50,32 +50,36 @@ def main():
         final_U = get_unitary(final_x)
         check_unitary = final_U * final_U.dag()
 
-        psi_ijkl_list_test, q_mn_list_test, psi_mn_list_test, user_without_nan_test  = make_users_qvariables(df, user_test)
-
-        pi_tilde = calc_prob([0], current_fallacy, final_U, psi_ijkl_list_test, q_mn_list[0])
-        pj_tilde = calc_prob([1], current_fallacy, final_U, psi_ijkl_list_test, q_mn_list[0])
-        pij_tilde = calc_prob([1, 2], current_fallacy, final_U, psi_ijkl_list_test, q_mn_list[0])
-
         I = qeye(16)
         I.dims = final_U.dims
-        pi_tilde_I = calc_prob([0], current_fallacy, I, psi_ijkl_list_test, q_mn_list[0])
-        pj_tilde_I = calc_prob([1], current_fallacy, I, psi_ijkl_list_test, q_mn_list[0])
-        pij_tilde_I = calc_prob([1, 2], current_fallacy, I, psi_ijkl_list_test, q_mn_list[0])
+        
+        psi_ijkl_list_test, q_mn_list_test, psi_mn_list_test, user_without_nan_test  = make_users_qvariables(df, user_test)
+
+        pi_tilde_U, pj_tilde_U, pij_tilde_U = probs_quantum_prediction(current_fallacy, final_U, psi_ijkl_list_test, q_mn_list)
+        pi_tilde_I, pj_tilde_I, pij_tilde_I = probs_quantum_prediction(current_fallacy, I, psi_ijkl_list_test, q_mn_list)
+
 
         user_same_q_test = user_same_q[user_same_q.user.isin(user_without_nan_test)]
 
-        probs = np.array([pi_tilde, pj_tilde, pij_tilde]).T
-        probs_df = pd.DataFrame(data=probs, columns=['p1_U', 'p2_U', 'p12_U'], index=user_same_q_test.index)
+        probs_U = np.array([pi_tilde_U, pj_tilde_U, pij_tilde_U]).T
+        probs_I = np.array([pi_tilde_I, pj_tilde_I, pij_tilde_I]).T
+        probs = np.append(probs_U, probs_I, axis=1)
+        probs_df = pd.DataFrame(data=probs, columns=['p1_U', 'p2_U', 'p12_U', 'p1_I', 'p2_I', 'p12_I'], index=user_same_q_test.index)
         user_same_q_test = pd.concat([user_same_q_test, probs_df], axis=1)
+        user_same_q_test.to_csv('analysis/user_same_q_test' + str(int(qn)) + '.csv')
 
-        dist_p1U  = np.abs(user_same_q_test['p1'] - user_same_q_test['p1_U'])
-        dist_p2U  = np.abs(user_same_q_test['p2'] - user_same_q_test['p2_U'])
-        dist_p12U = np.abs(user_same_q_test['p12'] - user_same_q_test['p12_U'])
-        user_same_q_test.to_csv('user_same_q_test' + str(int(qn)) + '.csv')
-        print('(True probabilities) - (probabilities predicted by unitary transformation)')
-        print('<|p1_tilde - p1|>: %.2f'  % (np.mean(dist_p1U)))
-        print('<|p2_tilde - p2|>: %.2f'  % (np.mean(dist_p2U)))
-        print('<|p3_tilde - p12|>: %.2f' % (np.mean(dist_p12U)))
+        dist_p1U, dist_p2U, dist_p12U = distance_calc(user_same_q_test, probs2compare=['p1_U', 'p2_U', 'p12_U'], mean=False)
+        dist_p1I, dist_p2I, dist_p12I = distance_calc(user_same_q_test, probs2compare=['p1_I', 'p2_I', 'p12_I'], mean=False)
+        dist_p1m, dist_p2m, dist_p12m = distance_calc(user_same_q_test, probs2compare=['p1_I', 'p2_I', 'p12_I'], mean=True)
+
+
+        
+        distances = np.array(((dist_p1I, dist_p2I, dist_p12I), (dist_p1m, dist_p2m, dist_p12m),
+                              (dist_p1U, dist_p2U, dist_p12U)))
+        
+        distances_df = pd.DataFrame(data = distances, columns = ['p1','p2','p12'], index=['I','m','U'])
+        distances_df.to_csv('analysis/distances' + str(int(qn)) + '.csv')
+        print(distances_df)
 
 
         # print(final_U)

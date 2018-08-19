@@ -197,3 +197,40 @@ def make_users_qvariables(df, users2run):
         user_without_nan.append(user)
 
     return psi_ijkl_list, q_mn_list, psi_mn_list, user_without_nan
+
+
+def probs_quantum_prediction(current_fallacy, U, psi_ijkl_list_test, q_mn_list):
+    '''
+    Predict probabilities using U operator
+    :param current_fallacy:
+    :param U: the operator
+    :param psi_ijkl_list_test: test list of the users.
+    :param q_mn_list: which qubits we are using.
+    :return: 3 probabilities: pA, pB, pAB
+    '''
+    pi_tilde  = calc_prob([0], current_fallacy, U, psi_ijkl_list_test, q_mn_list[0])
+    pj_tilde  = calc_prob([1], current_fallacy, U, psi_ijkl_list_test, q_mn_list[0])
+    pij_tilde = calc_prob([1, 2], current_fallacy, U, psi_ijkl_list_test, q_mn_list[0])
+
+    return pi_tilde, pj_tilde, pij_tilde
+
+def distance_calc(user_same_q_test, probs2compare = ['p1_U', 'p2_U', 'p12_U'], mean = False):
+    '''
+    Calculating distances between the predicted probabilities and the True (mean True)
+    :param user_same_q_test: dataframe containing all the probabilities
+    :param probs2compare: which probabilities to compare to. (List)
+    :param mean: compare to mean of probability or to individual probability (True/ False)
+    :return: dist_p1, dist_p2, dist_p12
+    '''
+
+    # mean over the difference between the predicted probability by UNITARY transformation and the true probability per participant
+    if mean:
+        dist_p1 = np.mean(np.abs(user_same_q_test['p1'].mean() - user_same_q_test['p1']))
+        dist_p2 = np.mean(np.abs(user_same_q_test['p2'].mean() - user_same_q_test['p2']))
+        dist_p12 = np.mean(np.abs(user_same_q_test['p12'].mean() - user_same_q_test['p12']))
+    else:
+        dist_p1 = np.mean(np.abs(user_same_q_test['p1'] - user_same_q_test[probs2compare[0]]))
+        dist_p2 = np.mean(np.abs(user_same_q_test['p2'] - user_same_q_test[probs2compare[1]]))
+        dist_p12 = np.mean(np.abs(user_same_q_test['p12'] - user_same_q_test[probs2compare[2]]))
+
+    return dist_p1, dist_p2, dist_p12
