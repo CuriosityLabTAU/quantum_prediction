@@ -71,13 +71,15 @@ def main():
         dist_p1U, dist_p2U, dist_p12U = distance_calc(user_same_q_test, probs2compare=['p1_U', 'p2_U', 'p12_U'], mean=False)
         dist_p1I, dist_p2I, dist_p12I = distance_calc(user_same_q_test, probs2compare=['p1_I', 'p2_I', 'p12_I'], mean=False)
         dist_p1m, dist_p2m, dist_p12m = distance_calc(user_same_q_test, probs2compare=['p1_I', 'p2_I', 'p12_I'], mean=True)
+        dist_p1r, dist_p2r, dist_p12r = distance_calc(user_same_q_test, probs2compare=['p1_I', 'p2_I', 'p12_I'], rand=True)
+        #todo: add comparing to pull a random probability.
 
 
         
-        distances = np.array(((dist_p1I, dist_p2I, dist_p12I), (dist_p1m, dist_p2m, dist_p12m),
+        distances = np.array(((dist_p1I, dist_p2I, dist_p12I), (dist_p1m, dist_p2m, dist_p12m), (dist_p1r, dist_p2r, dist_p12r),
                               (dist_p1U, dist_p2U, dist_p12U)))
         
-        distances_df = pd.DataFrame(data = distances, columns = ['p1','p2','p12'], index=['I','m','U'])
+        distances_df = pd.DataFrame(data = distances, columns = ['p1','p2','p12'], index=['I','m', 'r', 'U'])
         distances_df.to_csv('analysis/distances' + str(int(qn)) + '.csv')
         print(distances_df)
 

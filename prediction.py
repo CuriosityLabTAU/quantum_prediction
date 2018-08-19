@@ -214,12 +214,13 @@ def probs_quantum_prediction(current_fallacy, U, psi_ijkl_list_test, q_mn_list):
 
     return pi_tilde, pj_tilde, pij_tilde
 
-def distance_calc(user_same_q_test, probs2compare = ['p1_U', 'p2_U', 'p12_U'], mean = False):
+def distance_calc(user_same_q_test, probs2compare = ['p1_U', 'p2_U', 'p12_U'], mean = False, rand = False):
     '''
     Calculating distances between the predicted probabilities and the True (mean True)
     :param user_same_q_test: dataframe containing all the probabilities
     :param probs2compare: which probabilities to compare to. (List)
     :param mean: compare to mean of probability or to individual probability (True/ False)
+    :param random: compare to random probability or to individual probability (True/ False)
     :return: dist_p1, dist_p2, dist_p12
     '''
 
@@ -232,5 +233,10 @@ def distance_calc(user_same_q_test, probs2compare = ['p1_U', 'p2_U', 'p12_U'], m
         dist_p1 = np.mean(np.abs(user_same_q_test['p1'] - user_same_q_test[probs2compare[0]]))
         dist_p2 = np.mean(np.abs(user_same_q_test['p2'] - user_same_q_test[probs2compare[1]]))
         dist_p12 = np.mean(np.abs(user_same_q_test['p12'] - user_same_q_test[probs2compare[2]]))
+
+    if rand:
+        dist_p1 = np.mean(np.abs(user_same_q_test['p1'] - np.random.rand(1)))
+        dist_p2 = np.mean(np.abs(user_same_q_test['p2'] - np.random.rand(1)))
+        dist_p12 = np.mean(np.abs(user_same_q_test['p12'] - np.random.rand(1)))
 
     return dist_p1, dist_p2, dist_p12
