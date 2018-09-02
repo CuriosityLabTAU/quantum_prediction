@@ -235,8 +235,9 @@ def distance_calc(user_same_q_test, probs2compare = ['p1_U', 'p2_U', 'p12_U'], m
         dist_p12 = np.mean(np.abs(user_same_q_test['p12'] - user_same_q_test[probs2compare[2]]))
 
     if rand:
-        dist_p1 = np.mean(np.abs(user_same_q_test['p1'] - np.random.rand(1)))
-        dist_p2 = np.mean(np.abs(user_same_q_test['p2'] - np.random.rand(1)))
-        dist_p12 = np.mean(np.abs(user_same_q_test['p12'] - np.random.rand(1)))
+        N = user_same_q_test.shape[0]
+        dist_p1 = np.mean(np.abs(user_same_q_test['p1'] - np.random.rand(N)))
+        dist_p2 = np.mean(np.abs(user_same_q_test['p2'] - np.random.rand(N)))
+        dist_p12 = np.mean(np.abs(user_same_q_test['p12'] - np.random.rand(N)))
 
     return dist_p1, dist_p2, dist_p12
