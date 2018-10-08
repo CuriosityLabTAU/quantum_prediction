@@ -66,7 +66,7 @@ def numerical_quantum_coefficients(df):
             d[['a00','a01' ,'a10', 'a11']] = res_temp.x
             d[['check_pA', 'check_pB', 'check_pA_B']] = calculate_p(res_temp.x, fal)
 
-        break
+        break #
     return df
     #
 
