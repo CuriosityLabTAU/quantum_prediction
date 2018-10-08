@@ -49,18 +49,24 @@ def numerical_quantum_coefficients(df):
         fal = d['fal']
 
         x0 = [0.5, 0.5, 0.5, 0.5]
-        cons = ({'type': 'eq', 'fun': fun_to_constraint})
-        # run minimization
-        res_temp = minimize(fun_to_minimize, x0, args=(p, fal),
-                            method='SLSQP', bounds=None, constraints=cons,
-                            options={'disp': False})
+        intials = [[0.5, 0.5, 0.5, 0.5],[.9,0.01,0.01,0.01],[0.01,.9,0.01,0.01],[0.01,0.01,.9,0.01],[0.01,0.01,0.01,.9],[.02,.05,-.6,.9]]
+        solution = np.zeros([intials.__len__(), 4])
+        for i, x0 in enumerate(intials):
+            cons = ({'type': 'eq', 'fun': fun_to_constraint})
+            # run minimization
+            res_temp = minimize(fun_to_minimize, x0, args=(p, fal),
+                                method='SLSQP', bounds=None, constraints=cons,
+                                options={'disp': False})
 
-        print(res_temp.x, res_temp.fun)
+            print(res_temp.x, res_temp.fun)
+            print('normalization =',fun_to_constraint(res_temp.x))
 
-        d[['a00','a01' ,'a10', 'a11']] = res_temp.x
-        d[['check_pA', 'check_pB', 'check_pA_B']] = calculate_p(res_temp.x, fal)
+            solution[i,:] = res_temp.x
 
+            d[['a00','a01' ,'a10', 'a11']] = res_temp.x
+            d[['check_pA', 'check_pB', 'check_pA_B']] = calculate_p(res_temp.x, fal)
 
+        break
     return df
     #
 

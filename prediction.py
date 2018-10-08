@@ -224,20 +224,23 @@ def distance_calc(user_same_q_test, probs2compare = ['p1_U', 'p2_U', 'p12_U'], m
     :return: dist_p1, dist_p2, dist_p12
     '''
 
-    # mean over the difference between the predicted probability by UNITARY transformation and the true probability per participant
-    if mean:
-        dist_p1 = np.mean(np.abs(user_same_q_test['p1'].mean() - user_same_q_test['p1']))
-        dist_p2 = np.mean(np.abs(user_same_q_test['p2'].mean() - user_same_q_test['p2']))
-        dist_p12 = np.mean(np.abs(user_same_q_test['p12'].mean() - user_same_q_test['p12']))
-    else:
-        dist_p1 = np.mean(np.abs(user_same_q_test['p1'] - user_same_q_test[probs2compare[0]]))
-        dist_p2 = np.mean(np.abs(user_same_q_test['p2'] - user_same_q_test[probs2compare[1]]))
-        dist_p12 = np.mean(np.abs(user_same_q_test['p12'] - user_same_q_test[probs2compare[2]]))
 
     if rand:
         N = user_same_q_test.shape[0]
-        dist_p1 = np.mean(np.abs(user_same_q_test['p1'] - np.random.rand(N)))
-        dist_p2 = np.mean(np.abs(user_same_q_test['p2'] - np.random.rand(N)))
-        dist_p12 = np.mean(np.abs(user_same_q_test['p12'] - np.random.rand(N)))
-
+        dist_p  = np.zeros([100,3])
+        for i in range(100):
+            dist_p[i,0] = np.mean(np.abs(user_same_q_test['p1'] - np.random.rand(N)))
+            dist_p[i,1] = np.mean(np.abs(user_same_q_test['p2'] - np.random.rand(N)))
+            dist_p[i,2] = np.mean(np.abs(user_same_q_test['p12'] - np.random.rand(N)))
+        dist_p1, dist_p2, dist_p12 = dist_p.mean(axis = 0)
+    else:
+        # mean over the difference between the predicted probability by UNITARY transformation and the true probability per participant
+        if mean:
+            dist_p1 = np.mean(np.abs(user_same_q_test['p1'].mean() - user_same_q_test['p1']))
+            dist_p2 = np.mean(np.abs(user_same_q_test['p2'].mean() - user_same_q_test['p2']))
+            dist_p12 = np.mean(np.abs(user_same_q_test['p12'].mean() - user_same_q_test['p12']))
+        else:
+            dist_p1 = np.mean(np.abs(user_same_q_test['p1'] - user_same_q_test[probs2compare[0]]))
+            dist_p2 = np.mean(np.abs(user_same_q_test['p2'] - user_same_q_test[probs2compare[1]]))
+            dist_p12 = np.mean(np.abs(user_same_q_test['p12'] - user_same_q_test[probs2compare[2]]))
     return dist_p1, dist_p2, dist_p12

@@ -9,14 +9,12 @@ from prediction import *
 
 
 def main():
-    # df = pd.read_csv('data/new_dataframe.csv', index_col=0) # todo there is a problem with the DF i need to check what. something with the pos and qn.
-    # # # normalizing the probabilities for quantum calculations.
-    # # df.p1 = df.p1/4.
-    # # df.p2 = df.p2/4.
-    # # df.p12 = df.p12/4.
-    #
-    # df = numerical_quantum_coefficients(df)   # get the a_ij
-    # df.to_csv('data/with_coef.csv')
+    calculate_coefficients = True
+
+    if calculate_coefficients:
+        df = pd.read_csv('data/new_dataframe.csv', index_col=0)
+        df = numerical_quantum_coefficients(df)   # get the a_ij
+        # df.to_csv('data/with_coef.csv')
 
     df = pd.read_csv('data/with_coef.csv', index_col=0)
     print(df.shape)
@@ -72,10 +70,8 @@ def main():
         dist_p1I, dist_p2I, dist_p12I = distance_calc(user_same_q_test, probs2compare=['p1_I', 'p2_I', 'p12_I'], mean=False)
         dist_p1m, dist_p2m, dist_p12m = distance_calc(user_same_q_test, probs2compare=['p1_I', 'p2_I', 'p12_I'], mean=True)
         dist_p1r, dist_p2r, dist_p12r = distance_calc(user_same_q_test, probs2compare=['p1_I', 'p2_I', 'p12_I'], rand=True)
-        #todo: add comparing to pull a random probability.
 
 
-        
         distances = np.array(((dist_p1I, dist_p2I, dist_p12I), (dist_p1m, dist_p2m, dist_p12m), (dist_p1r, dist_p2r, dist_p12r),
                               (dist_p1U, dist_p2U, dist_p12U)))
         
@@ -85,12 +81,6 @@ def main():
 
         # print(final_U)
         # print(check_unitary)
-
-
-
-
-
-
 
     # for row in range(df.shape[0]):
     #     qi, qj = df.loc[row, ['q1', 'q2']]
