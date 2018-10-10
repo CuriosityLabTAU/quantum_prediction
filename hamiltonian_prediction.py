@@ -38,6 +38,7 @@ def Projection(q, n_qubits=2):
 
 def compose_H(H1_, H2_, Hmix_, n_qubits=2):
     dim_ = 2 ** n_qubits
+    # TODO: add off diagonal
     H_ = np.kron(H1_, np.eye(2)) + np.kron(np.eye(2), H2_) + np.kron(np.array([[0,1], [1,0]]), Hmix_)
     #
     # H_ = np.zeros([dim_, dim_])
@@ -56,7 +57,7 @@ def uniform_psi(n_qubits=2):
 
 
 def norm_psi(psi):
-    p_ = np.dot(np.conjugate(np.transpose(psi)), psi)
+    p_ = np.dot(np.conjugate(np.transpose(psi)), psi).real
     return p_
 
 
@@ -107,11 +108,25 @@ def fun_to_minimize_mix(h_, real_p_, h_a, h_b, psi_0, n_qubits=2):
 
 
 def grandH_from_x(x_):
+    # TODO: add all off-diagonal
     H_ = np.kron(np.kron(np.kron(param_H(x_[0]), np.eye(2)), np.eye(2)), np.eye(2))
     H_ += np.kron(np.kron(np.kron(np.eye(2), param_H(x_[1])), np.eye(2)), np.eye(2))
     H_ += np.kron(np.kron(np.kron(np.eye(2), np.eye(2)), param_H(x_[2])), np.eye(2))
     H_ += np.kron(np.kron(np.kron(np.eye(2), np.eye(2)), np.eye(2)), param_H(x_[3]))
     return H_
+
+def get_p_from_grandH(grand_U, data):
+    sub_U_psi = np.dot(grand_U, data['01']['psi'])
+
+    # if A-D
+    P_Ha_2qubits = np.dot(Projection(0), U_from_H(compose_H(param_H(data[0]['h_a']), zero_H(1), zero_H(1))))
+    P_Ha_4qubits = np.kron(np.kron(P_Ha_2qubits, np.eye(2)), np.eye(2))
+    p_a_calc = norm_psi(np.dot(P_Ha_4qubits, sub_U_psi))
+
+    P_Hb_2qubits = np.dot(Projection(1), U_from_H(compose_H(zero_H(1), param_H(data[1]['h_b']), zero_H(1))))
+    P_Hb_4qubits = np.kron(np.kron(np.eye(2), np.eye(2)), P_Hb_2qubits)
+    p_b_calc = norm_psi(np.dot(P_Hb_4qubits, sub_U_psi))
+    return p_a_calc, p_b_calc
 
 
 def fun_to_minimize_grandH(x_, all_data):
@@ -119,23 +134,15 @@ def fun_to_minimize_grandH(x_, all_data):
 
     err_ = 0.0
     for data in all_data.values():
-        sub_U_psi = np.dot(grand_U, data['01']['psi'])
-
         p_a = data['2']['p_a']
         p_b = data['2']['p_b']
 
-        # if A-C
-        P_Ha_2qubits = np.dot(Projection(0), U_from_H(compose_H(param_H(data[0]['h_a']), zero_H(1), zero_H(1))))
-        P_Ha_4qubits = np.kron(np.kron(P_Ha_2qubits, np.eye(2)), np.eye(2))
-        p_a_calc = norm_psi(np.dot(P_Ha_4qubits, sub_U_psi))
-
-        P_Hb_2qubits = np.dot(Projection(0), U_from_H(compose_H(param_H(data[1]['h_a']), zero_H(1), zero_H(1))))
-        P_Hb_4qubits = np.kron(np.kron(np.eye(2), np.eye(2)), P_Hb_2qubits)
-        p_b_calc = norm_psi(np.dot(P_Hb_4qubits, sub_U_psi))
+        p_a_calc, p_b_calc = get_p_from_grandH(grand_U, data)
 
         err_ += (p_a - p_a_calc) ** 2
         err_ += (p_b - p_b_calc) ** 2
 
+    err_ = np.sqrt(err_ / (2*len(all_data.values())))
     return err_
 
 
@@ -213,10 +220,56 @@ def main():
         }
 
         all_data[u_id] = sub_data
+
     print(len(all_data.keys()))
+
     # to find U_3
+    n_user = len(all_data.keys())
+    n_train = int(0.9 * n_user)
+    user_rand_order = np.random.permutation(np.arange(n_user))
+    user_rand_order = np.array(all_data.keys())[user_rand_order]
+    user_train = user_rand_order[:n_train].tolist()
+    user_test = user_rand_order[n_train:].tolist()
+
+    train_data = {}
+    for i_t, i_train in enumerate(user_train):
+        train_data[i_t] = all_data[i_train]
+
+    test_data = {}
+    for i_t, i_test in enumerate(user_test):
+        test_data[i_t] = all_data[i_test]
 
 
+    res_temp = minimize(fun_to_minimize_grandH, np.zeros([4]), args=(train_data),
+                        method='SLSQP', bounds=None, options={'disp': False})
+    print('train error: ', res_temp.fun)
+    print(res_temp.x)
 
+    # given U, calculate p_a, p_b for all 100%
+    grand_U = U_from_H(grandH_from_x(res_temp.x))
+    grand_I = np.eye(16)
+
+    test_err_U = 0.0
+    test_err_I = 0.0
+    for u_id, data in all_data.items():
+        p_a_calc, p_b_calc = get_p_from_grandH(grand_U, data)
+        data['2']['p_a_calc'] = p_a_calc
+        data['2']['p_b_calc'] = p_b_calc
+
+        p_a_calc, p_b_calc = get_p_from_grandH(grand_I, data)
+        data['2']['p_a_calc_I'] = p_a_calc
+        data['2']['p_b_calc_I'] = p_b_calc
+
+        test_err_U += (data['2']['p_a'] - data['2']['p_a_calc']) ** 2
+        test_err_U += (data['2']['p_b'] - data['2']['p_b_calc']) ** 2
+
+        test_err_I += (data['2']['p_a'] - data['2']['p_a_calc_I']) ** 2
+        test_err_I += (data['2']['p_b'] - data['2']['p_b_calc_I']) ** 2
+
+    test_err_U = np.sqrt(test_err_U / (2 * len(all_data.keys())))
+    test_err_I = np.sqrt(test_err_I / (2 * len(all_data.keys())))
+
+    print('test error: ', test_err_U)
+    print('test error I : ', test_err_I)
 
 main()
