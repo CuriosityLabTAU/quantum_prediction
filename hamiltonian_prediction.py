@@ -2,6 +2,15 @@ from scipy.optimize import minimize
 import numpy as np
 from scipy.linalg import expm
 import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import stats
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
+from statsmodels.stats.multicomp import MultiComparison
+import statsmodels.api as sm
+from statsmodels.formula.api import ols
+
+def rmse(pred_, real_):
+    return np.square(np.subtract(pred_, real_)).mean()
 
 
 def zero_H(n_qubits=2):
@@ -11,7 +20,8 @@ def zero_H(n_qubits=2):
 
 
 def param_H(h_):
-    H_ = np.matrix([[1, h_], [h_, -1]])
+    the_param = np.squeeze(h_)
+    H_ = 1.0 / np.sqrt(1 + the_param * the_param) * np.matrix([[1, the_param], [the_param, -1]])
     return H_
 
 
@@ -38,8 +48,16 @@ def Projection(q, n_qubits=2):
 
 def compose_H(H1_, H2_, Hmix_, n_qubits=2):
     dim_ = 2 ** n_qubits
-    # TODO: add off diagonal
-    H_ = np.kron(H1_, np.eye(2)) + np.kron(np.eye(2), H2_) + np.kron(np.array([[0,1], [1,0]]), Hmix_)
+    H_ = np.kron(H1_, np.eye(2)) + np.kron(np.eye(2), H2_)
+
+    mix = np.zeros([dim_, dim_])
+    mix[0, 0] = Hmix_[0, 0]
+    mix[0, -1] = Hmix_[0, 1]
+    mix[-1, 0] = Hmix_[1, 0]
+    mix[-1, -1] = Hmix_[1, 1]
+
+    H_ += mix
+
     #
     # H_ = np.zeros([dim_, dim_])
     # H_[:H1_.shape[0], :H1_.shape[1]] = H1_
@@ -85,7 +103,7 @@ def prob_from_h(h_, psi_0, q, n_qubits=2):
 
 def fun_to_minimize(h_, real_p_, psi_0, q, n_qubits=2):
     p_ = prob_from_h(h_, psi_0, q, n_qubits=2)
-    err_ = (p_ - real_p_) ** 2
+    err_ = rmse(p_, real_p_)
     return err_
 
 
@@ -103,7 +121,7 @@ def prob_from_hmix(hmix_, h_a, h_b, psi_0, n_qubits=2):
 
 def fun_to_minimize_mix(h_, real_p_, h_a, h_b, psi_0, n_qubits=2):
     p_ = prob_from_hmix(h_, h_a, h_b, psi_0, n_qubits=2)
-    err_ = (p_ - real_p_) ** 2
+    err_ = rmse(p_, real_p_)
     return err_
 
 
@@ -113,6 +131,14 @@ def grandH_from_x(x_):
     H_ += np.kron(np.kron(np.kron(np.eye(2), param_H(x_[1])), np.eye(2)), np.eye(2))
     H_ += np.kron(np.kron(np.kron(np.eye(2), np.eye(2)), param_H(x_[2])), np.eye(2))
     H_ += np.kron(np.kron(np.kron(np.eye(2), np.eye(2)), np.eye(2)), param_H(x_[3]))
+
+    # total
+    mix_total = param_Hmix(x_[4])
+    H_[0, 0] += mix_total[0, 0]
+    H_[0, -1] += mix_total[0, 1]
+    H_[-1, 0] += mix_total[1, 0]
+    H_[-1, -1] += mix_total[1, 1]
+
     return H_
 
 def get_p_from_grandH(grand_U, data):
@@ -132,18 +158,16 @@ def get_p_from_grandH(grand_U, data):
 def fun_to_minimize_grandH(x_, all_data):
     grand_U = U_from_H(grandH_from_x(x_))
 
-    err_ = 0.0
+    err_ = []
     for data in all_data.values():
         p_a = data['2']['p_a']
         p_b = data['2']['p_b']
 
         p_a_calc, p_b_calc = get_p_from_grandH(grand_U, data)
+        err_.append((p_a_calc - p_a) ** 2)
+        err_.append((p_b_calc - p_b) ** 2)
 
-        err_ += (p_a - p_a_calc) ** 2
-        err_ += (p_b - p_b_calc) ** 2
-
-    err_ = np.sqrt(err_ / (2*len(all_data.values())))
-    return err_
+    return np.sqrt(np.mean(err_))
 
 
 def main():
@@ -225,22 +249,24 @@ def main():
 
     # to find U_3
     n_user = len(all_data.keys())
-    n_train = int(0.9 * n_user)
+    n_train = int(0.8 * n_user)
     user_rand_order = np.random.permutation(np.arange(n_user))
     user_rand_order = np.array(all_data.keys())[user_rand_order]
     user_train = user_rand_order[:n_train].tolist()
     user_test = user_rand_order[n_train:].tolist()
 
     train_data = {}
+    train_p = np.zeros([len(user_train), 2])
     for i_t, i_train in enumerate(user_train):
         train_data[i_t] = all_data[i_train]
+        train_p[i_t, :] = all_data[i_train]['2']['p_a'], all_data[i_train]['2']['p_b']
 
     test_data = {}
     for i_t, i_test in enumerate(user_test):
         test_data[i_t] = all_data[i_test]
 
 
-    res_temp = minimize(fun_to_minimize_grandH, np.zeros([4]), args=(train_data),
+    res_temp = minimize(fun_to_minimize_grandH, np.zeros([5]), args=(train_data),
                         method='SLSQP', bounds=None, options={'disp': False})
     print('train error: ', res_temp.fun)
     print(res_temp.x)
@@ -249,8 +275,11 @@ def main():
     grand_U = U_from_H(grandH_from_x(res_temp.x))
     grand_I = np.eye(16)
 
-    test_err_U = 0.0
-    test_err_I = 0.0
+    test_err_U = []
+    test_err_I = []
+    test_err_mean_train = []
+    test_err_uniform = []
+
     for u_id, data in all_data.items():
         p_a_calc, p_b_calc = get_p_from_grandH(grand_U, data)
         data['2']['p_a_calc'] = p_a_calc
@@ -260,16 +289,37 @@ def main():
         data['2']['p_a_calc_I'] = p_a_calc
         data['2']['p_b_calc_I'] = p_b_calc
 
-        test_err_U += (data['2']['p_a'] - data['2']['p_a_calc']) ** 2
-        test_err_U += (data['2']['p_b'] - data['2']['p_b_calc']) ** 2
+        test_err_U.append((data['2']['p_a'] - data['2']['p_a_calc']) ** 2)
+        test_err_U.append((data['2']['p_b'] - data['2']['p_b_calc']) ** 2)
 
-        test_err_I += (data['2']['p_a'] - data['2']['p_a_calc_I']) ** 2
-        test_err_I += (data['2']['p_b'] - data['2']['p_b_calc_I']) ** 2
+        test_err_I.append((data['2']['p_a'] - data['2']['p_a_calc_I']) ** 2)
+        test_err_I.append((data['2']['p_b'] - data['2']['p_b_calc_I']) ** 2)
 
-    test_err_U = np.sqrt(test_err_U / (2 * len(all_data.keys())))
-    test_err_I = np.sqrt(test_err_I / (2 * len(all_data.keys())))
+        test_err_mean_train.append((np.mean(train_p[:, 0]) - data['2']['p_a']) ** 2)
+        test_err_mean_train.append((np.mean(train_p[:, 1]) - data['2']['p_b']) ** 2)
 
-    print('test error: ', test_err_U)
-    print('test error I : ', test_err_I)
+        test_err_uniform.append((0.5 - data['2']['p_a']) ** 2)
+        test_err_uniform.append((0.5 - data['2']['p_b']) ** 2)
 
-main()
+    print('test error: ', np.sqrt(np.mean(test_err_U)), np.sqrt(np.std(test_err_U)))
+    print('test error I : ', np.sqrt(np.mean(test_err_I)), np.sqrt(np.std(test_err_I)))
+    print('test error mean train : ', np.sqrt(np.mean(test_err_mean_train)), np.sqrt(np.std(test_err_mean_train)))
+    print('test error uniform : ', np.sqrt(np.mean(test_err_uniform)), np.sqrt(np.std(test_err_uniform)))
+
+    test_df = pd.DataFrame(data=np.squeeze(np.array([test_err_U, test_err_I, test_err_mean_train, test_err_uniform]).T),
+                           columns=['U', 'I', 'Mean', 'Uniform'])
+    test_df.to_csv('data/test_errors_df.csv')
+
+# main()
+test_df = pd.read_csv('data/test_errors_df.csv', index_col=0)
+
+F, p = stats.f_oneway(test_df['U'], test_df['I'], test_df['Mean'], test_df['Uniform'])
+print(F, p)
+
+
+# mc = MultiComparison([test_df['U'], test_df['I'], test_df['Mean'], test_df['Uniform']])
+# mc_results = mc.tukeyhsd()
+# print(mc_results)
+
+# test_df.boxplot()
+# plt.show()
