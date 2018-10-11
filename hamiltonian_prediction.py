@@ -2,6 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import pickle
 from minimization_functions import *
+from statsmodels.formula.api import ols
+
 from scipy import stats
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from statsmodels.stats.multicomp import MultiComparison
@@ -11,102 +13,226 @@ from scipy.stats import wilcoxon
 from general_quantum_operators import *
 
 
-def calculate_all_data():
+h_names_gen = ['0', '1', '2', '3', '01', '23']
+
+def sub_q_p(df, u_id, p_id):
+    d = df[(df['userID'] == u_id) & (df['pos'] == p_id)]
+    p = {
+        'A': d['p1'].values,
+        'B': d['p2'].values,
+        'A_B': d['p12'].values
+    }
+    return p, d
+
+
+def get_question_H(psi_0, all_q, p_real, h_a_and_b=None):
+    sub_q_data = {}
+    if h_a_and_b is None:
+        # find h_a
+        full_h = ['x', None, None]
+        all_P = '0'
+        res_temp = general_minimize(fun_to_minimize, args_=(p_real['A'], psi_0, full_h, all_q, all_P, 4), x_0=np.array([0.0]))
+        h_a = res_temp.x[0]
+
+        full_h = [h_a, None, None]
+        p_a = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4)
+        sub_q_data['p_a'] = p_real['A']
+        sub_q_data['p_a_h'] = p_a
+        sub_q_data['p_a_err'] = res_temp.fun
+        # print(p_a, p['A'])
+
+        # find h_b
+        full_h = [None, 'x', None]
+        all_P = '1'
+        res_temp = general_minimize(fun_to_minimize, args_=(p_real['B'], psi_0, full_h, all_q, all_P, 4),
+                                    x_0=np.array([0.0]))
+        h_b = res_temp.x[0]
+        full_h = [None, h_b, None]
+        p_b = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4)
+        sub_q_data['p_b'] = p_real['B']
+        sub_q_data['p_b_h'] = p_b
+        sub_q_data['p_b_err'] = res_temp.fun
+        # print(p_b, p['B'])
+    else:
+        h_a = h_a_and_b[0]
+        h_b = h_a_and_b[1]
+
+    # find h_ab
+    full_h = [h_a, h_b, 'x']
+    all_P = 'C'
+    res_temp = general_minimize(fun_to_minimize, args_=(p_real['A_B'], psi_0, full_h, all_q, all_P, 4),
+                                x_0=np.array([0.0]))
+    # print(res_temp.fun)
+    h_ab = res_temp.x[0]
+    full_h = [h_a, h_b, h_ab]
+    p_ab = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4)
+    sub_q_data['p_ab'] = p_real['A_B']
+    sub_q_data['p_ab_h'] = p_ab
+    sub_q_data['p_ab_err'] = res_temp.fun
+    # print(p_ab, p['A_B'])
+
+    full_h = [h_a, h_b, h_ab]
+    total_H = compose_H(full_h, all_q, n_qubits=4)
+    psi_final = get_psi(total_H, psi_0)
+    sub_q_data['h_a'] = h_a
+    sub_q_data['h_b'] = h_b
+    sub_q_data['h_ab'] = h_ab
+    sub_q_data['psi'] = psi_final
+
+    return sub_q_data
+
+
+def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False):
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
 
     # go over all individuals
     user_same_q_list = {}
+    all_q_data = {}
+    q_info = {}
     for qn in df[(df.qn == 2.)].pos.unique():
         user_same_q_temp = df[(df.pos == 2.) & (df.qn == qn)]['userID'] #
         # user_same_q_list.append(user_same_q_temp)
         user_same_q_list[qn] = user_same_q_temp.unique()
+        all_q_data[qn] = {}
+        first_user = user_same_q_temp.values[0]
+        q_info[qn] = {
+            'q1': df[(df.pos == 2.) & (df.userID == first_user)]['q1'].values,
+            'q2': df[(df.pos == 2.) & (df.userID == first_user)]['q2'].values,
+            'fal':df[(df.pos == 2.) & (df.userID == first_user)]['fal'].values
+        }
 
+    # first two question, all subjects
     all_data = {}
-    for ui, u_id in enumerate(user_same_q_list[2]):
+    for ui, u_id in enumerate(df['userID'].unique()):
+        if ui > 20:
+            break
+
         # select only from one group that has the same third question
         print('calculating states for user #:',  ui)
         # go over questions 1 & 2
         psi_0 = uniform_psi(n_qubits=4)
-        sub_data = {}
+        sub_data = {
+            'h_q': {}
+        }
         for p_id in range(2):
-
-            d = df[(df['userID'] == u_id) & (df['pos'] == p_id)]
-            p = {
-                'A': d['p1'].values,
-                'B': d['p2'].values,
-                'A_B': d['p12'].values
-            }
+            p_real, d = sub_q_p(df, u_id, p_id)
             all_q = [int(d['q1'].values[0] - 1), int(d['q2'].values[0] - 1)]
 
-            sub_data[p_id] = {}
+            sub_data[p_id] = get_question_H(psi_0, all_q, p_real)
 
-            # find h_a
-            full_h = ['x', None, None]
-            all_P = '0'
-            res_temp = general_minimize(fun_to_minimize,  args_=(p['A'], psi_0, full_h, all_q, all_P, 4), x_0=np.array([0.0]))
-            h_a = res_temp.x[0]
+            if use_neutral:
+                psi_0 = uniform_psi(n_qubits=4)
+            else:
+                psi_0 = sub_data[p_id]['psi']
 
-            full_h = [h_a, None, None]
-            p_a = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4)
-            sub_data[p_id]['p_a'] = p['A']
-            sub_data[p_id]['p_a_h'] = p_a
-            sub_data[p_id]['p_a_err'] = res_temp.fun
-            # print(p_a, p['A'])
-
-            # find h_b
-            full_h = [None, 'x', None]
-            all_P = '1'
-            res_temp = general_minimize(fun_to_minimize, args_=(p['B'], psi_0, full_h, all_q, all_P, 4),
-                                        x_0=np.array([0.0]))
-            h_b = res_temp.x[0]
-            full_h = [None, h_b, None]
-            p_b = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4)
-            sub_data[p_id]['p_b'] = p['B']
-            sub_data[p_id]['p_b_h'] = p_b
-            sub_data[p_id]['p_b_err'] = res_temp.fun
-            # print(p_b, p['B'])
-
-            # find
-            full_h = [h_a, h_b, 'x']
-            all_P = 'C'
-            res_temp = general_minimize(fun_to_minimize, args_=(p['A_B'], psi_0, full_h, all_q, all_P, 4),
-                                        x_0=np.array([0.0]))
-            # print(res_temp.fun)
-            h_ab = res_temp.x[0]
-            full_h = [h_a, h_b, h_ab]
-            p_ab = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4)
-            sub_data[p_id]['p_ab'] = p['A_B']
-            sub_data[p_id]['p_ab_h'] = p_ab
-            sub_data[p_id]['p_ab_err'] = res_temp.fun
-            # print(p_ab, p['A_B'])
-
-            full_h = [h_a, h_b, h_ab]
-            total_H = compose_H(full_h, all_q, n_qubits=4)
-            psi_final = get_psi(total_H, psi_0)
-            sub_data[p_id]['h_a'] = h_a
-            sub_data[p_id]['h_b'] = h_b
-            sub_data[p_id]['h_ab'] = h_ab
-            sub_data[p_id]['psi'] = psi_final
-
-        sub_data['01'] = {
-            'psi': np.kron(sub_data[0]['psi'], sub_data[1]['psi'])
-        }
-
-        d = df[(df['userID'] == u_id) & (df['pos'] == 2)]
-        p = {
-            'A': d['p1'].values,
-            'B': d['p2'].values,
-            'A_B': d['p12'].values
-        }
-        sub_data['2'] = {
-            'p_a': p['A'],
-            'p_b': p['B']
-        }
+            sub_data['h_q'][str(all_q[0])] = sub_data[p_id]['h_a']
+            sub_data['h_q'][str(all_q[1])] = sub_data[p_id]['h_b']
+            sub_data['h_q'][str(all_q[0])+str(all_q[1])] = sub_data[p_id]['h_ab']
 
         all_data[u_id] = sub_data
 
-    pickle.dump(all_data, 'data/all_data.pkl')
+    # third question
+    for qn, user_list in user_same_q_list.items():
+        # go over all 4 types of questions
 
+        for k, v in all_data.items():
+            if k in user_list:
+                all_q_data[qn][k] = deepcopy(v)
+
+        all_q = [q_info[qn]['q1']-1, q_info[qn]['q2']-1]
+        h_names = ['0', '1', '2', '3', '01', '23', str(all_q[0]) + str(all_q[1])]
+
+        # find U for each question
+        res_temp = general_minimize(fun_to_minimize_grandH, args_=(all_q, all_q_data), x_0=np.zeros([5]))
+        q_info[qn]['U'] = U_from_H(grandH_from_x(res_temp.x))
+
+        # calculate H_AB
+        H_dict = {}
+        for u_id in user_list:
+            if use_neutral:
+                psi_0 = uniform_psi(n_qubits=4)
+            else:
+                psi_0 = np.dot(q_info[qn]['U'], all_data[u_id][1]['psi'])
+            p_real, d = sub_q_p(df, u_id, 2)
+            sub_data_q = get_question_H(psi_0, all_q, p_real,
+                                        [all_data[u_id]['h_q'][str(all_q[0])], all_data[u_id]['h_q'][str(all_q[1])]])
+            all_data[u_id]['h_q'][str(all_q[0])+str(all_q[1])] = sub_data_q['h_ab']
+            H_dict[u_id] = []
+            for hs in h_names:
+                H_dict[u_id].append(all_data[u_id]['h_q'][hs])
+        df_H = pd.DataFrame.from_dict(data=H_dict, orient='index', columns=h_names)
+
+        formula = h_names[-1] + '~' + h_names[0]
+        for h_i in range(1, len(h_names)-1):
+            formula += '+' + h_names[h_i]
+        est = ols(formula=formula, data=df_H).fit()
+        q_info[qn]['H_ols'] = est
+
+    pickle.dump(all_data, 'data/all_data.pkl')
+    pickle.dump(q_info, 'data/q_info.pkl')
+
+
+def generate_predictions(use_U=True, with_mixing=True, use_neutral=False):
+    all_data = pickle.load('data/all_data.pkl')
+    q_info = pickle.load('data/q_info.pkl')
+    df = pd.read_csv('data/new_dataframe.csv', index_col=0)
+
+    pred_df_dict = {}
+    # go over all individuals
+    for u_id, data in all_data.items():
+        pred_df_dict[u_id] = []
+        pred_df_col_names = []
+
+        # go over question 3-5
+        for p_id in range(3,6):
+            p_real, d = sub_q_p(df, u_id, p_id)
+            all_q = [int(d['q1'].values[0] - 1), int(d['q2'].values[0] - 1)]
+            qn = int(d['qn'].values[0])
+
+            # use question U to generate psi_0
+            if use_neutral:
+                psi_0 = uniform_psi(n_qubits=4)
+            else:
+                psi_0 = np.dot(q_info[qn]['U'], data[p_id - 1]['psi'])
+
+            # use question H to generate h_ab
+            all_h = []
+            for hs in h_names_gen:
+                all_h.append(data['h_q'][hs])
+            h_ab = q_info[qn]['H_ols'].predict(np.array(all_h))
+
+            full_h = [data['h_q'][str(all_q[0])], data['h_q'][str(all_q[1])], h_ab]
+            pred_p_a = get_general_p(full_h, all_q, '0', psi_0, n_qubits=4)
+            pred_p_b = get_general_p(full_h, all_q, '1', psi_0, n_qubits=4)
+            if q_info[qb]['fal'] == 1:
+                pred_p_ab = get_general_p(full_h, all_q, 'C', psi_0, n_qubits=4)
+            else:
+                pred_p_ab = get_general_p(full_h, all_q, 'D', psi_0, n_qubits=4)
+
+            total_H = compose_H(full_h, all_q, n_qubits=4)
+            psi_final = get_psi(total_H, psi_0)
+            data[p_id]['psi'] = psi_final
+
+            pred_df_col_names.append('q%d_pred_pa' % p_id)
+            pred_df_dict[u_id].append(pred_p_a)
+            pred_df_col_names.append('q%d_real_pa' % p_id)
+            pred_df_dict[u_id].append(p_real['A'])
+
+            pred_df_col_names.append('q%d_pred_pb' % p_id)
+            pred_df_dict[u_id].append(pred_p_b)
+            pred_df_col_names.append('q%d_real_pb' % p_id)
+            pred_df_dict[u_id].append(p_real['B'])
+
+            pred_df_col_names.append('q%d_pred_pab' % p_id)
+            pred_df_dict[u_id].append(pred_p_ab)
+            pred_df_col_names.append('q%d_real_pab' % p_id)
+            pred_df_dict[u_id].append(p_real['A_B'])
+
+    pred_df = pd.DataFrame.from_dict(data=pred_df_dict, orient='index', columns=pred_df_col_names)
+    pred_df.to_csv('data/pred_df.csv')
+
+
+def all_data_to_csv(all_data):
     all_data_list = []
     for k, v in all_data.items():
         sub_data_list = []
@@ -123,7 +249,6 @@ def calculate_all_data():
         all_data_list.append(sub_data_list)
     df_all_data = pd.DataFrame(data=all_data_list, columns=col_names)
     df_all_data.to_csv('data/all_data_df.csv')
-    return all_data
 
 
 def calculate_errors():
