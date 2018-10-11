@@ -38,12 +38,19 @@ def Projection(q, n_qubits=2):
     return P_
 
 
-def MultiProjection(q_str, n_qubits=2):
-    # TODO; algebra of projection, '0+1-01'
-    q = int(q_str[0])
-    P_ = Projection(q, n_qubits)
-    for i in range(1, len(q_str), 2):
-        q = int(q_str[i+1])
+def MultiProjection(q_str, all_q, n_qubits=2):
+    P_ = None
+    if q_str == '0':
+        P_ = Projection(all_q[0], n_qubits)
+    elif q_str == '1':
+        P_ = Projection(all_q[1], n_qubits)
+    elif q_str == 'C':
+        P_ = np.dot(Projection(all_q[0], n_qubits), Projection(all_q[1], n_qubits))
+    elif q_str == 'D':
+        P_ = Projection(all_q[0], n_qubits) + Projection(all_q[1], n_qubits) - \
+             np.dot(Projection(all_q[0], n_qubits), Projection(all_q[1], n_qubits))
+    return P_
+
 
 
 def uniform_psi(n_qubits=2):
@@ -57,7 +64,7 @@ def norm_psi(psi):
     return p_
 
 
-def get_psi(psi_0, H_):
+def get_psi(H_, psi_0):
     psi_ = np.dot(U_from_H(H_), psi_0)
     return psi_
 
@@ -68,3 +75,10 @@ def get_prob_single_q(psi_0, H_, q, n_qubits=2):
     p_ = norm_psi(proj_psi).real
     return p_
 
+
+def compose_H(full_h, all_q, n_qubits=4):
+    # full_h = [h_a, h_b, h_mix]
+    # all_q = [q1, q2]
+    H_ = zero_H(n_qubits)
+
+    return H_
