@@ -81,8 +81,7 @@ def compose_H(full_h, all_q, n_qubits=4):
     # all_q = [q1, q2]
     H_ = zero_H(n_qubits)
 
-    Hmix_ = np.array([[5, 5], [5, -5]])
-
+    Hmix_ = param_Hmix(full_h[2])
     mix = np.zeros([4, 4])
     mix[0, 0] = Hmix_[0, 0]
     mix[0, -1] = Hmix_[0, 1]
@@ -90,6 +89,7 @@ def compose_H(full_h, all_q, n_qubits=4):
     mix[-1, -1] = Hmix_[1, 1]
 
     so = np.kron(np.kron(mix, np.eye(2)), np.eye(2))
+
     o = reorganize_operator([0, 3, 1, 2], so)
 
     return H_
