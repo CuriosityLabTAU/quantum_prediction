@@ -82,7 +82,7 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None):
     return sub_q_data
 
 
-def calculate_all_data():
+def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False):
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
 
     # go over all individuals
@@ -120,7 +120,11 @@ def calculate_all_data():
 
             sub_data[p_id] = get_question_H(psi_0, all_q, p_real)
 
-            psi_0 = sub_data[p_id]['psi']
+            if use_neutral:
+                psi_0 = uniform_psi(n_qubits=4)
+            else:
+                psi_0 = sub_data[p_id]['psi']
+
             sub_data['h_q'][str(all_q[0])] = sub_data[p_id]['h_a']
             sub_data['h_q'][str(all_q[1])] = sub_data[p_id]['h_b']
             sub_data['h_q'][str(all_q[0])+str(all_q[1])] = sub_data[p_id]['h_ab']
@@ -145,7 +149,10 @@ def calculate_all_data():
         # calculate H_AB
         H_dict = {}
         for u_id in user_list:
-            psi_0 = np.dot(q_info[qn]['U'], all_data[u_id][1]['psi'])
+            if use_neutral:
+                psi_0 = uniform_psi(n_qubits=4)
+            else:
+                psi_0 = np.dot(q_info[qn]['U'], all_data[u_id][1]['psi'])
             p_real, d = sub_q_p(df, u_id, 2)
             sub_data_q = get_question_H(psi_0, all_q, p_real,
                                         [all_data[u_id]['h_q'][str(all_q[0])], all_data[u_id]['h_q'][str(all_q[1])]])
@@ -165,7 +172,7 @@ def calculate_all_data():
     pickle.dump(q_info, 'data/q_info.pkl')
 
 
-def generate_predictions():
+def generate_predictions(use_U=True, with_mixing=True, use_neutral=False):
     all_data = pickle.load('data/all_data.pkl')
     q_info = pickle.load('data/q_info.pkl')
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
@@ -183,7 +190,10 @@ def generate_predictions():
             qn = int(d['qn'].values[0])
 
             # use question U to generate psi_0
-            psi_0 = np.dot(q_info[qn]['U'], data[p_id-1]['psi'])
+            if use_neutral:
+                psi_0 = uniform_psi(n_qubits=4)
+            else:
+                psi_0 = np.dot(q_info[qn]['U'], data[p_id - 1]['psi'])
 
             # use question H to generate h_ab
             all_h = []
