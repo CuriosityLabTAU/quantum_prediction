@@ -129,19 +129,6 @@ def compose_H(full_h, all_q, n_qubits=4):
     return H_total
 
 
-def create_Nqubit_state(N):
-    '''Create index matrix for all possible combinations of N sized psi.'''
-    m, n = 2**N, N
-    a = np.zeros([m, n])
-    A = np.ones(N)
-    for i in range(0, m):
-        for j in range(0,N):
-            if i % 2**j == 0:
-                A[-j-1] = flipa(A[-j-1]) # flipping the qubit value 0/1.1
-        a[i, :] = A
-    return a
-
-
 def flipa(a):
     '''Flip 0/1'''
     if a == 0:
@@ -150,16 +137,31 @@ def flipa(a):
         a = 0
     return a
 
+def create_Nqubit_state(N):
+    '''Create index matrix for all possible combinations of N sized psi.'''
+    m, n = 2**N, N
+    a = []
+    A = np.ones(N, dtype = 'int')
+    for i in range(0, m):
+        for j in range(0,N):
+            if i % 2**j == 0:
+                A[-j-1] = flipa(A[-j-1]) # flipping the qubit value 0/1.1
+        a.append(''.join(str(e) for e in list(A)))
+    return a
+
+
 def rho_mat(psi):
     '''Create generic rho matrix for a give Psi,
     what product there is in every place in the matrix.'''
-    nr,nc = psi.shape
-    rho = np.zeros([2,nc,nr,nr])
+    nr = psi.__len__()
+    rho = []
+    rho = list(rho)
     for i in range(0,nr):
+        row = []
         for j in range(0, nr):
-            rho[:,:,i,j] = psi[i],psi[j] # Putting the combinations |psi1><psi0| in the right place in the matrix.
+            row.append(psi[i]+psi[j])
+        rho.append(row)
     return rho
-
 
 def reorganize_operator(qubits_order, operator_mat):
     '''Reorganizing matrix from specific order to the right order [1,2,3,4].'''
@@ -167,25 +169,29 @@ def reorganize_operator(qubits_order, operator_mat):
     psi = create_Nqubit_state(N)
     rho_scramb = rho_mat(psi)
     rho_org = np.copy(rho_scramb)
-    nps, nq, nr, nc = rho_scramb.shape
-    re_rho = np.zeros([nr, nc])
+    nq = qubits_order.__len__()
+    nr = nq ** 2
+    re_rho = np.zeros([nr, nr])
+    nps = [0,1]
     # Scrambling rho according to given qubits order
     for i in range(0, nr):
-        temp = np.zeros(nq)
-        for j in range(0, nc):
-            for k in range(0, nps):
-                for l in range(0, nq):
+        for j in range(0, nr):
+            t = []
+            for k in nps:
+                temp = np.zeros(nq, dtype='int')
+                for l in range(0,nq):
                     # finding the index of the cell from the scrambled rho in the organized rho.
-                    temp[qubits_order[l]] = rho_scramb[k, l, i, j]
-                rho_scramb[k, :, i, j] = temp
+                    temp[qubits_order[l]] = rho_scramb[i][j][l+nq*k]
+                t.append(''.join(str(e) for e in list(temp)))
+            # print(t)
+            rho_scramb[i][j] =''.join(t)
 
     # Reorganizing Rho matrix with the real values (Not just indices).
     for i in range(0, nr):
-        for j in range(0, nc):
+        for j in range(0, nr):
             for k in range(0, nr):
-                for l in range(0, nc):
-                    if np.sum(rho_org[0, :, k, l] == rho_scramb[0, :, i, j]) == nq & np.sum(
-                                    rho_org[1, :, k, l] == rho_scramb[1, :, i, j]) == nq:
+                for l in range(0, nr):
+                    if rho_org[k][l] == rho_scramb[i][j]:
                         re_rho[k, l] = operator_mat[i, j]
     return re_rho
 
