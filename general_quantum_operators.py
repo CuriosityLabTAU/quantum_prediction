@@ -137,6 +137,14 @@ def flipa(a):
         a = 0
     return a
 
+def flipa(a):
+    '''Flip 0/1'''
+    if a == 0:
+        a = 1
+    elif a == 1:
+        a = 0
+    return a
+
 def create_Nqubit_state(N):
     '''Create index matrix for all possible combinations of N sized psi.'''
     m, n = 2**N, N
