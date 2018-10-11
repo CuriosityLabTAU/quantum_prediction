@@ -1,49 +1,17 @@
+from copy import deepcopy
 from scipy.optimize import minimize
 import numpy as np
 from scipy.linalg import expm
 import pandas as pd
 import matplotlib.pyplot as plt
+import pickle
 from scipy import stats
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from statsmodels.stats.multicomp import MultiComparison
 import statsmodels.api as sm
 from statsmodels.formula.api import ols
-
-def rmse(pred_, real_):
-    return np.square(np.subtract(pred_, real_)).mean()
-
-
-def zero_H(n_qubits=2):
-    dim_ = 2 ** n_qubits
-    H_ = np.zeros([dim_, dim_])
-    return H_
-
-
-def param_H(h_):
-    the_param = np.squeeze(h_)
-    H_ = 1.0 / np.sqrt(1 + the_param * the_param) * np.matrix([[1, the_param], [the_param, -1]])
-    return H_
-
-
-def param_Hmix(g_):
-    H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[1, 1], [1, -1]])
-    return H_
-
-
-def U_from_H(H_):
-    U_ = expm(-1j * np.pi / 2.0 * H_)
-    return U_
-
-
-def Projection(q, n_qubits=2):
-    dim_ = 2 ** n_qubits
-    d_ = np.zeros([dim_])
-    for i in range(dim_):
-        i_repr = np.binary_repr(i, width=n_qubits)
-        if i_repr[q] == '1':
-            d_[i] = 1
-    P_ = np.diag(d_)
-    return P_
+from scipy.stats import wilcoxon
+from general_quantum_operators import *
 
 
 def compose_H(H1_, H2_, Hmix_, n_qubits=2):
@@ -58,37 +26,10 @@ def compose_H(H1_, H2_, Hmix_, n_qubits=2):
 
     H_ += mix
 
-    #
-    # H_ = np.zeros([dim_, dim_])
-    # H_[:H1_.shape[0], :H1_.shape[1]] = H1_
-    # H_[H1_.shape[0]:, H1_.shape[1]:] = H2_
-    # H_[H1_.shape[0]:, :H1_.shape[1]] = Hmix_
-    # H_[:H1_.shape[0], H1_.shape[1]:] = np.transpose(Hmix_)
-
     return H_
 
 
-def uniform_psi(n_qubits=2):
-    dim_ = 2 ** n_qubits
-    psi_ = np.ones([dim_,1]) / np.sqrt(dim_)
-    return psi_
 
-
-def norm_psi(psi):
-    p_ = np.dot(np.conjugate(np.transpose(psi)), psi).real
-    return p_
-
-
-def get_psi(psi_0, H_):
-    psi_ = np.dot(U_from_H(H_), psi_0)
-    return psi_
-
-
-def get_prob(psi_0, H_, q, n_qubits=2):
-    psi_ = get_psi(psi_0, H_)
-    proj_psi = np.dot(Projection(q, n_qubits), psi_)
-    p_ = norm_psi(proj_psi).real
-    return p_
 
 
 def prob_from_h(h_, psi_0, q, n_qubits=2):
@@ -107,7 +48,8 @@ def fun_to_minimize(h_, real_p_, psi_0, q, n_qubits=2):
     return err_
 
 
-def get_prob_mix(psi_0, H_, n_qubits=2):
+def get_prob_mix(psi_0, H_, n_qubits=2, the_qubits=[]):
+
     psi_ = np.dot(Projection(0, n_qubits), np.dot(Projection(1, n_qubits), np.dot(U_from_H(H_), psi_0)))
     p_ = norm_psi(psi_).real
     return p_
@@ -141,6 +83,7 @@ def grandH_from_x(x_):
 
     return H_
 
+
 def get_p_from_grandH(grand_U, data):
     sub_U_psi = np.dot(grand_U, data['01']['psi'])
 
@@ -170,7 +113,30 @@ def fun_to_minimize_grandH(x_, all_data):
     return np.sqrt(np.mean(err_))
 
 
-def main():
+# finding H_AD
+def fun_to_minimize_HAD(hmix_, real_p_, h_a, h_b, U, psi_0, n_qubits=4):
+    U_psi = np.dot(U, psi_0)                        # 16 x 1
+    H_ = compose_H(param_H(h_a), param_H(h_b), param_Hmix(hmix_))   # TODO: we need this - 16x16
+    psi_ = np.dot(Projection(0, n_qubits), np.dot(Projection(3, n_qubits), np.dot(U_from_H(H_), U_psi)))
+    p_ = norm_psi(psi_).real
+    err_ = rmse(p_, real_p_)
+    return err_
+
+
+def general_minimize(f, args_, x_0):
+    min_err = 100.0
+    best_result = None
+    for i in range(100):
+        x_0_rand = np.random.random(x_0.shape) * 2.0 - 1.0
+        res_temp = minimize(f, x_0_rand, args=args_, method='SLSQP', bounds=None, options={'disp': False})
+        if res_temp.fun < min_err:
+            min_err = res_temp.fun
+            best_result = deepcopy(res_temp)
+
+    return best_result
+
+
+def calculate_all_data():
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
 
     # go over all individuals
@@ -195,38 +161,51 @@ def main():
                 'B': d['p2'].values,
                 'A_B': d['p12'].values
             }
+
+            sub_data[p_id] = {}
+
             # find h_a
-            res_temp = minimize(fun_to_minimize, 0.0, args=(p['A'], psi_0, 0),
-                                method='SLSQP', bounds=None, options={'disp': False})
+            res_temp = general_minimize(fun_to_minimize, args_=(p['A'], psi_0, 0), x_0=np.array([0.0]))
+            # res_temp = minimize(fun_to_minimize, 0.0, args=(p['A'], psi_0, 0),
+            #                     method='SLSQP', bounds=None, options={'disp': False})
             # print(res_temp.fun)
             h_a = res_temp.x
             p_a = prob_from_h(h_a, psi_0, 0)
+            sub_data[p_id]['p_a'] = p['A']
+            sub_data[p_id]['p_a_h'] = p_a
+            sub_data[p_id]['p_a_err'] = res_temp.fun
             # print(p_a, p['A'])
 
             # find h_b
-            res_temp = minimize(fun_to_minimize, 0.0, args=(p['B'], psi_0, 1),
-                                method='SLSQP', bounds=None, options={'disp': False})
+            res_temp = general_minimize(fun_to_minimize, args_=(p['B'], psi_0, 1), x_0=np.array([0.0]))
+            # res_temp = minimize(fun_to_minimize, 0.0, args=(p['B'], psi_0, 1),
+            #                     method='SLSQP', bounds=None, options={'disp': False})
             # print(res_temp.fun)
             h_b = res_temp.x  #find h_mix
             p_b = prob_from_h(h_b, psi_0, 1)
+            sub_data[p_id]['p_b'] = p['B']
+            sub_data[p_id]['p_b_h'] = p_b
+            sub_data[p_id]['p_b_err'] = res_temp.fun
             # print(p_b, p['B'])
 
-            # find h_ab
-            res_temp = minimize(fun_to_minimize_mix, 0.0, args=(p['A_B'], h_a, h_b, psi_0, 1),
-                                method='SLSQP', bounds=None, options={'disp': False})
+            # find
+            res_temp = general_minimize(fun_to_minimize_mix, args_=(p['A_B'], h_a, h_b, psi_0, 1), x_0=np.array([0.0]))
+            # res_temp = minimize(fun_to_minimize_mix, 0.0, args=(p['A_B'], h_a, h_b, psi_0, 1),
+            #                     method='SLSQP', bounds=None, options={'disp': False})
             # print(res_temp.fun)
             h_ab = res_temp.x
             p_ab = prob_from_hmix(h_ab, h_a, h_b, psi_0)
+            sub_data[p_id]['p_ab'] = p['A_B']
+            sub_data[p_id]['p_ab_h'] = p_ab
+            sub_data[p_id]['p_ab_err'] = res_temp.fun
             # print(p_ab, p['A_B'])
 
             total_H = compose_H(param_H(h_a), param_H(h_b), param_Hmix(h_ab))
             psi_final = get_psi(psi_0, total_H)
-            sub_data[p_id] = {
-                'h_a': h_a,
-                'h_b': h_b,
-                'h_ab': h_ab,
-                'psi': psi_final
-            }
+            sub_data[p_id]['h_a'] = h_a
+            sub_data[p_id]['h_b'] = h_b
+            sub_data[p_id]['h_ab'] = h_ab
+            sub_data[p_id]['psi'] = psi_final
 
         sub_data['01'] = {
             'psi': np.kron(sub_data[0]['psi'], sub_data[1]['psi'])
@@ -245,9 +224,40 @@ def main():
 
         all_data[u_id] = sub_data
 
-    print(len(all_data.keys()))
+    pickle.dump(all_data, 'data/all_data.pkl')
 
-    # to find U_3
+    all_data_list = []
+    for k, v in all_data.items():
+        sub_data_list = []
+        col_names = []
+        for q in [0, 1]:
+            for p_s in ['a', 'b', 'ab']:
+                for t_s in ['', '_h', '_err']:
+                    col_names.append('%s_%s%s' % (q, p_s, t_s))
+                    sub_data_list.append(np.squeeze(v[q]['p_%s%s' % (p_s, t_s)]))
+        q = '2'
+        for p_s in ['a', 'b']:
+            col_names.append('q%s_p%s' % (q, p_s))
+            sub_data_list.append(np.squeeze(v[q]['p_%s' % (p_s)]))
+        all_data_list.append(sub_data_list)
+    df_all_data = pd.DataFrame(data=all_data_list, columns=col_names)
+    df_all_data.to_csv('data/all_data_df.csv')
+    return all_data
+
+
+def calculate_errors():
+    all_data_in = pickle.load('data/all_data.pkl')
+    # first filter bad q0, q1:
+    filter_threshold = 0.05
+    all_data = {}
+    for k, v in all_data_in.items():
+        if v[0]['p_a_err'] < filter_threshold and v[0]['p_b_err'] < filter_threshold and v[0]['p_ab_err'] < filter_threshold:
+            if v[1]['p_a_err'] < filter_threshold and v[1]['p_b_err'] < filter_threshold and v[1]['p_ab_err'] < filter_threshold:
+                all_data[k] = deepcopy(v)
+
+    print('Before filter: ', len(all_data_in.keys()), 'After filter: ', len(all_data))
+
+    # to find U_3, and H_AD
     n_user = len(all_data.keys())
     n_train = int(0.8 * n_user)
     user_rand_order = np.random.permutation(np.arange(n_user))
@@ -255,6 +265,7 @@ def main():
     user_train = user_rand_order[:n_train].tolist()
     user_test = user_rand_order[n_train:].tolist()
 
+    # for U
     train_data = {}
     train_p = np.zeros([len(user_train), 2])
     for i_t, i_train in enumerate(user_train):
@@ -264,8 +275,6 @@ def main():
     test_data = {}
     for i_t, i_test in enumerate(user_test):
         test_data[i_t] = all_data[i_test]
-
-
     res_temp = minimize(fun_to_minimize_grandH, np.zeros([5]), args=(train_data),
                         method='SLSQP', bounds=None, options={'disp': False})
     print('train error: ', res_temp.fun)
@@ -274,6 +283,14 @@ def main():
     # given U, calculate p_a, p_b for all 100%
     grand_U = U_from_H(grandH_from_x(res_temp.x))
     grand_I = np.eye(16)
+
+
+    # for H_AD
+    reg_data = np.zeros([len(user_train), 7])
+    for i_t, i_train in enumerate(user_train):
+        reg_data[i_t, 0:3] = all_data[i_train][0]['h_a'], all_data[i_train][0]['h_b'], all_data[i_train][0]['h_ab']
+        reg_data[i_t, 3:6] = all_data[i_train][1]['h_a'], all_data[i_train][1]['h_b'], all_data[i_train][1]['h_ab']
+        reg_data[i_t, 6] = all_data[i_train][]
 
     test_err_U = []
     test_err_I = []
@@ -306,20 +323,33 @@ def main():
     print('test error mean train : ', np.sqrt(np.mean(test_err_mean_train)), np.sqrt(np.std(test_err_mean_train)))
     print('test error uniform : ', np.sqrt(np.mean(test_err_uniform)), np.sqrt(np.std(test_err_uniform)))
 
+
     test_df = pd.DataFrame(data=np.squeeze(np.array([test_err_U, test_err_I, test_err_mean_train, test_err_uniform]).T),
                            columns=['U', 'I', 'Mean', 'Uniform'])
     test_df.to_csv('data/test_errors_df.csv')
 
-# main()
-test_df = pd.read_csv('data/test_errors_df.csv', index_col=0)
 
-F, p = stats.f_oneway(test_df['U'], test_df['I'], test_df['Mean'], test_df['Uniform'])
-print(F, p)
+def show_results():
+    test_df = pd.read_csv('data/test_errors_df.csv', index_col=0)
+    print(test_df.describe())
+    for t0 in test_df.columns:
+        for t1 in test_df.columns:
+            if t0 != t1:
+                print(t0, t1, wilcoxon(test_df[t0], test_df[t1]))
 
+    print('=== Hypotheses =====')
+    print('U - Mean (given training, quantum helps): ', test_df['U'].mean(), test_df['Mean'].mean(),
+          wilcoxon(test_df['U'], test_df['Mean']))
 
-# mc = MultiComparison([test_df['U'], test_df['I'], test_df['Mean'], test_df['Uniform']])
-# mc_results = mc.tukeyhsd()
-# print(mc_results)
+    print('I - Uniform (no training, quantum helps): ', test_df['I'].mean(), test_df['Uniform'].mean(),
+          wilcoxon(test_df['I'], test_df['Uniform']))
 
-# test_df.boxplot()
-# plt.show()
+    print('U - I (given quantum, training helps): ', test_df['U'].mean(), test_df['I'].mean(),
+          wilcoxon(test_df['U'], test_df['I']))
+
+    test_df.boxplot()
+    plt.show()
+
+# all_data_ = calculate_all_data()
+calculate_errors(all_data_)
+show_results()
