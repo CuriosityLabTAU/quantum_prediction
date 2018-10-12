@@ -184,13 +184,15 @@ def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False):
             est = ols(formula=formula, data=df_H).fit()
             q_info[qn]['H_ols'] = est
 
-    pickle.dump(all_data, open('data/all_data.pkl', 'w'))
-    pickle.dump(q_info, open('data/q_info.pkl', 'w'))
+    control_str = '_U_%s_mixing_%s_neutral_%s' % (use_U, with_mixing, use_neutral)
+    pickle.dump(all_data, open('data/all_data%s.pkl' % control_str, 'w'))
+    pickle.dump(q_info, open('data/q_info%s.pkl' %control_str, 'w'))
 
 
 def generate_predictions(use_U=True, with_mixing=True, use_neutral=False):
-    all_data = pickle.load(open('data/all_data.pkl', 'r'))
-    q_info = pickle.load(open('data/q_info.pkl', 'r'))
+    control_str = '_U_%s_mixing_%s_neutral_%s' % (use_U, with_mixing, use_neutral)
+    all_data = pickle.load(open('data/all_data%s.pkl' % control_str, 'r'))
+    q_info = pickle.load(open('data/q_info%s.pkl' % control_str, 'r'))
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
 
     pred_df_dict = {}
@@ -254,7 +256,7 @@ def generate_predictions(use_U=True, with_mixing=True, use_neutral=False):
 
     pred_df = pd.DataFrame.from_dict(data=pred_df_dict, orient='index')
     pred_df.columns = pred_df_col_names
-    pred_df.to_csv('data/pred_df.csv')
+    pred_df.to_csv('data/pred_df%s.csv' % control_str)
 
 
 def all_data_to_csv(all_data):
@@ -381,6 +383,10 @@ def show_results():
     test_df.boxplot()
     plt.show()
 
-# calculate_all_data()
+use_U = True
+use_neutral = False
+with_mixing = True
 
-generate_predictions()
+calculate_all_data(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing)
+
+generate_predictions(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing)
