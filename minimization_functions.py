@@ -19,20 +19,20 @@ def fun_to_minimize_grandH(x_, all_q, all_data):
 
     err_ = []
     for data in all_data.values():
-        psi_0 = np.dot(grand_U, data['01']['psi'])      # TODO: more generic
+        psi_0 = np.dot(grand_U, data[1]['psi'])
 
-        h_a = data['full_h'][all_q[0]]
+        h_a = data['h_q'][str(all_q[0])]
         p_a_calc = get_general_p(full_h=[h_a, None, None],
                                  all_q=all_q,
                                  all_P='0', psi_0=psi_0, n_qubits=4)
-        p_a = data['2']['p_a']
+        p_a = data[2]['p_a']
         err_.append((p_a_calc - p_a) ** 2)
 
-        h_b = data['full_h'][all_q[1]]
+        h_b = data['h_q'][str(all_q[1])]
         p_b_calc = get_general_p(full_h=[None, h_b, None],
                                  all_q=all_q,
                                  all_P='1', psi_0=psi_0, n_qubits=4)
-        p_b = data['2']['p_b']
+        p_b = data[2]['p_b']
         err_.append((p_b_calc - p_b) ** 2)
 
     return np.sqrt(np.mean(err_))
@@ -41,7 +41,7 @@ def fun_to_minimize_grandH(x_, all_q, all_data):
 def general_minimize(f, args_, x_0):
     min_err = 100.0
     best_result = None
-    for i in range(2):
+    for i in range(10):
         x_0_rand = np.random.random(x_0.shape) * 2.0 - 1.0
         res_temp = minimize(f, x_0_rand, args=args_, method='SLSQP', bounds=None, options={'disp': False})
         if res_temp.fun < min_err:
