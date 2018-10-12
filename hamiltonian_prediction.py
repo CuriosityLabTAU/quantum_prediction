@@ -26,7 +26,7 @@ def sub_q_p(df, u_id, p_id):
     return p, d
 
 
-def get_question_H(psi_0, all_q, p_real, h_a_and_b=None):
+def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True):
     sub_q_data = {}
     if h_a_and_b is None:
         # find h_a
@@ -58,18 +58,22 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None):
         h_a = h_a_and_b[0]
         h_b = h_a_and_b[1]
 
-    # find h_ab
-    full_h = [h_a, h_b, 'x']
-    all_P = 'C'
-    res_temp = general_minimize(fun_to_minimize, args_=(p_real['A_B'], psi_0, full_h, all_q, all_P, 4),
-                                x_0=np.array([0.0]))
-    # print(res_temp.fun)
-    h_ab = res_temp.x[0]
+    if with_mixing:
+        # find h_ab
+        full_h = [h_a, h_b, 'x']
+        all_P = 'C'
+        res_temp = general_minimize(fun_to_minimize, args_=(p_real['A_B'], psi_0, full_h, all_q, all_P, 4),
+                                    x_0=np.array([0.0]))
+        # print(res_temp.fun)
+        h_ab = res_temp.x[0]
+    else:
+        h_ab = 0.0
+
     full_h = [h_a, h_b, h_ab]
     p_ab = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4)
     sub_q_data['p_ab'] = p_real['A_B']
     sub_q_data['p_ab_h'] = p_ab
-    sub_q_data['p_ab_err'] = res_temp.fun
+    sub_q_data['p_ab_err'] = np.sqrt((p_real['A_B'] - p_ab) ** 2)
     # print(p_ab, p['A_B'])
 
     full_h = [h_a, h_b, h_ab]
@@ -209,12 +213,15 @@ def generate_predictions(use_U=True, with_mixing=True, use_neutral=False):
                 psi_0 = np.dot(q_info[qn]['U'], data[p_id - 1]['psi'])
 
             # use question H to generate h_ab
-            all_h = {'one': []}
-            for hs in h_names_gen:
-                all_h['one'].append(data['h_q'][hs])
-            df_H = pd.DataFrame.from_dict(data=all_h, orient='index')
-            df_H.columns = ['A', 'B', 'C', 'D', 'AB', 'CD']
-            h_ab = q_info[qn]['H_ols'].predict(df_H).values[0]
+            if with_mixing:
+                all_h = {'one': []}
+                for hs in h_names_gen:
+                    all_h['one'].append(data['h_q'][hs])
+                df_H = pd.DataFrame.from_dict(data=all_h, orient='index')
+                df_H.columns = ['A', 'B', 'C', 'D', 'AB', 'CD']
+                h_ab = q_info[qn]['H_ols'].predict(df_H).values[0]
+            else:
+                h_ab = 0.0
 
             full_h = [data['h_q'][str(all_q[0])], data['h_q'][str(all_q[1])], h_ab]
             pred_p_a = get_general_p(full_h, all_q, '0', psi_0, n_qubits=4)
