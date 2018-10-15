@@ -383,10 +383,23 @@ def show_results():
     test_df.boxplot()
     plt.show()
 
-use_U = True
-use_neutral = False
-with_mixing = True
+use_U_l = [True, False]
+use_neutral_l = [False, True]
+with_mixing_l = [True, False]
 
-calculate_all_data(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing)
+# Loop to run all controls, except the uniform or the mean
+for use_U in use_U_l:
+    for use_neutral in use_neutral_l:
+        for with_mixing in with_mixing_l:
 
-generate_predictions(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing)
+            print('Running: use_U=',use_U, 'use_neutral=',use_neutral, 'with_mixing=',with_mixing)
+
+            calculate_all_data(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing)
+
+            generate_predictions(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing)
+
+# todo: For uniform and mean it's one time calculation from the big dataframe that contains all the data.
+# todo: Right statistics comparison and plotting code. (non-parmetric paired t-test, Wilcoxon). (for each question)
+# todo: Check mean error by question/ position - to see if it goes up/down/flat.
+# todo: Add parameters to U.
+# todo: Choose different H.
