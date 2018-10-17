@@ -41,7 +41,7 @@ def fun_to_minimize_grandH(x_, all_q, all_data):
 def general_minimize(f, args_, x_0):
     min_err = 100.0
     best_result = None
-    for i in range(10):
+    for i in range(100):
         x_0_rand = np.random.random(x_0.shape) * 2.0 - 1.0
         res_temp = minimize(f, x_0_rand, args=args_, method='SLSQP', bounds=None, options={'disp': False})
         if res_temp.fun < min_err:

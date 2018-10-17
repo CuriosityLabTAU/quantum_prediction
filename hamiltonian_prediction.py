@@ -87,7 +87,7 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True):
     return sub_q_data
 
 
-def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False):
+def calculations_before_question3():
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
 
     # go over all individuals
@@ -111,7 +111,7 @@ def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False):
     for ui, u_id in enumerate(df['userID'].unique()):
 
         # select only from one group that has the same third question
-        print('calculating states for user #:',  ui)
+        print('calculating states for user #:',  ui, 'out of', df['userID'].unique().__len__())
         # go over questions 1 & 2
         psi_0 = uniform_psi(n_qubits=4)
         sub_data = {
@@ -134,7 +134,35 @@ def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False):
 
         all_data[u_id] = sub_data
 
+    pickle.dump([all_data,user_same_q_list, all_q_data, q_info], open('data/all_data_before3.pkl', 'w'))
+
+
+def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False):
+    df = pd.read_csv('data/new_dataframe.csv', index_col=0)
+    all_data = pickle.load(open('data/all_data_before3.pkl', 'r'))
+
+    # todo: change once I run everything again and comment all the loop below!!!
+    # all_data, user_same_q_list, all_q_data, q_info = pickle.load(open('data/all_data_before3.pkl', 'r'))
+
+    # create list of users with the same qn in pos
+    user_same_q_list = {}
+    all_q_data = {}
+    q_info = {}
+    for qn in df[(df.qn == 2.)].pos.unique():
+        user_same_q_temp = df[(df.pos == 2.) & (df.qn == qn)]['userID'] #
+        # user_same_q_list.append(user_same_q_temp)
+        user_same_q_list[qn] = user_same_q_temp.unique()
+        all_q_data[qn] = {}
+        first_user = user_same_q_temp.values[0]
+        q_info[qn] = {
+            'q1': df[(df.pos == 2.) & (df.userID == first_user)]['q1'].values,
+            'q2': df[(df.pos == 2.) & (df.userID == first_user)]['q2'].values,
+            'fal':df[(df.pos == 2.) & (df.userID == first_user)]['fal'].values
+        }
+
+
     # third question
+    print('third question')
     for qn, user_list in user_same_q_list.items():
         # go over all 4 types of questions
 
@@ -184,6 +212,7 @@ def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False):
             est = ols(formula=formula, data=df_H).fit()
             q_info[qn]['H_ols'] = est
 
+    print('before saving pkl')
     control_str = '_U_%s_mixing_%s_neutral_%s' % (use_U, with_mixing, use_neutral)
     pickle.dump(all_data, open('data/all_data%s.pkl' % control_str, 'w'))
     pickle.dump(q_info, open('data/q_info%s.pkl' %control_str, 'w'))
@@ -198,7 +227,7 @@ def generate_predictions(use_U=True, with_mixing=True, use_neutral=False):
     pred_df_dict = {}
     # go over all individuals
     for u_id, data in all_data.items():
-        print('Generating prediction for ', u_id)
+        # print('Generating prediction for ', u_id)
         pred_df_dict[u_id] = []
         pred_df_col_names = []
 
@@ -393,6 +422,10 @@ for use_U in use_U_l:
         for with_mixing in with_mixing_l:
 
             print('Running: use_U=',use_U, 'use_neutral=',use_neutral, 'with_mixing=',with_mixing)
+
+            if (use_U == True) & (use_neutral == False) & (with_mixing == True): # run once
+                continue # todo: in the end comment this
+                calculations_before_question3()
 
             calculate_all_data(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing)
 
