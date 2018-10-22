@@ -137,6 +137,7 @@ def stats_all(all_pred_err_df, df):
     umn_combinations = all_pred_err_df['UMN'].unique()
 
     predictions = pd.DataFrame.from_dict({'q':[], 'pos':[], 'umn1':[], 'umn2':[], 'mean1':[], 'mean2':[], 'prob': [], 's':[], 'pvalue':[]})
+    predictions_all = pd.DataFrame.from_dict({'umn1':[], 'umn2':[], 'mean1':[], 'mean2':[], 's':[], 'pvalue':[]})
     for k,v in user_same_q.items(): # k = qn_pn
         # predictions[k] = {}
         pos = k.split('_')[1][1]
@@ -151,7 +152,7 @@ def stats_all(all_pred_err_df, df):
                 for umn2 in umn_combinations:
                     pred_err1 = cpdf[cpdf['UMN']==umn1][cerr]
                     pred_err2 = cpdf[cpdf['UMN']==umn2][cerr]
-                    # todo: add mean, std columns
+                    # todo: add std columns
                     s, pv = stats.wilcoxon(pred_err1, pred_err2)
                     temp_dict = {'q': [qn],
                                  'pos': [pos],
@@ -165,7 +166,27 @@ def stats_all(all_pred_err_df, df):
 
                     predictions = predictions.append(pd.DataFrame.from_dict(temp_dict))
 
-    return predictions
+    # difference between UMN combination in total
+    # (not per users with the same questions order)
+    for umn1 in umn_combinations:
+        for umn2 in umn_combinations:
+            pred_err1 = all_pred_err_df[all_pred_err_df['UMN'] == umn1].drop(['UMN', 'userID'], axis = 1)
+            pred_err2 = all_pred_err_df[all_pred_err_df['UMN'] == umn2].drop(['UMN', 'userID'], axis = 1)
+            s, pv = stats.wilcoxon(pred_err1.mean(), pred_err2.mean())
+            temp_dict_all = {'umn1': [umn1],
+                             'umn2': [umn2],
+                             'mean1': [pred_err1.mean().mean()],
+                             'mean2': [pred_err2.mean().mean()],
+                             'std1': [pred_err1.mean().std()],
+                             'std2': [pred_err2.mean().std()],
+                             's': [s],
+                             'pvalue': [pv]}
+            predictions_all = predictions_all.append(pd.DataFrame.from_dict(temp_dict_all))
+
+
+    predictions = predictions.reset_index(drop=True)
+    predictions_all = predictions_all.reset_index(drop=True)
+    return predictions, predictions_all
 
 def create_all_data():
     '''load and build the '''
@@ -179,7 +200,6 @@ def create_all_data():
             for m in with_mixing_l:
                 control_str = 'data/predictions_stats_U_%s_mixing_%s_neutral_%s.csv' % (u, m, n)
                 df, pred_df = load_data([u,m,n])
-                print(u,m,n)
                 temp_all_pred_df = pred_df.copy()
                 temp_all_pred_df['U'] = u
                 temp_all_pred_df['mix'] = m
@@ -200,11 +220,12 @@ def create_all_data():
     return all_pred_df, all_pred_df1, df, pred_df
 
 all_pred_df, all_pred_err_df, df, pred_df = create_all_data() # load all the data with combination (UMN) column
-stats_sig_all =  stats_all(all_pred_err_df, df) # calculate all wilcoxon between all the UMN combination per question number and position.
+stats_sig_all_user, stats_sig_combined =  stats_all(all_pred_err_df, df) # calculate all wilcoxon between all the UMN combination per question number and position.
 
-all_pred_df.to_csv('data/all_predictions.csv', index=False)
-all_pred_err_df.to_csv('data/all_predictions_errros.csv', index=False)
-stats_sig_all.to_csv('data/all_predictions_stats.csv', index=False)
+all_pred_df.to_csv('analysis/all_predictions.csv', index=False)
+all_pred_err_df.to_csv('analysis/all_predictions_errros.csv', index=False)
+stats_sig_all_user.to_csv('analysis/all_predictions_stats_user.csv', index=False)
+stats_sig_combined.to_csv('analysis/all_predictions_stats_combined.csv', index=False)
 
 # plot_err(all_pred_df1)
 # plt.show()
