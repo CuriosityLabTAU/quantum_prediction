@@ -22,6 +22,8 @@ def param_H(h_):
 
 def param_Hmix(g_):
     H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[1, 1], [1, -1]])
+    #todo: different h_ab here --> change the matrix
+    # H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[0, 1], [0, -1]]) + np.matrix([[-1, 0], [1, 0]])
     return H_
 
 
@@ -220,3 +222,45 @@ def grandH_from_x(x_):
 
     return H_
 
+
+def find_where2multiple_h_param(num_of_qubits = 4, qubits = [1, 3], combo = [1, 0]):
+    '''
+    Find where the given qubits are equal to the combo. (qubits [0,1] == |1,0,x,x><x,x,x,x| or qubits [0,1] == |x,x,x,x><1,0,x,x| )
+    :param num_of_qubits: How many qubits in total in the state. (e.g. 4 qubits).
+    :param qubits: Which qubits we are working on. (e.g. the first and the third would be: [0,2])
+    :param combo: What is the state of each qubit.
+    :return: matrix that has True where the values of the two qubits together correspond to the combo.
+    '''
+    N = num_of_qubits
+    psi = create_Nqubit_state(N)
+    rho_scramb = rho_mat(psi)
+    rho_org = np.copy(rho_scramb)
+    h_multipication_place = np.zeros(rho_org.shape)
+    nq = N # number of qubits
+    nr = nq ** 2 # number of rows in rho
+      # current_qubits
+    for i in range(0, nr):
+        for j in range(0, nr):
+            # if (int(rho_org[i, j][cq[0]]) == c[0] and int(rho_org[i, j][cq[1]]) == c[1]) or \
+            #         (int(rho_org[i, j][nq + cq[0]]) == c[0] and int(rho_org[i, j][nq + cq[1]]) == c[1]):
+            if (int(rho_org[i, j][qubits[0]]) == combo[0] and int(rho_org[i, j][qubits[1]]) == combo[1]):
+                h_multipication_place[i, j] = 1
+            elif (int(rho_org[i, j][nq + qubits[0]]) == combo[0] and int(rho_org[i, j][nq + qubits[1]]) == combo[1]):
+                h_multipication_place[i, j] = 1
+    return h_multipication_place == 1
+
+
+def generic_grandH_from_x(x_, qubits = [1, 3], combo = [1, 0]):
+    # TODO: finish this function
+    H_ = np.kron(np.kron(np.kron(param_H(x_[0]), np.eye(2)), np.eye(2)), np.eye(2))
+    H_ += np.kron(np.kron(np.kron(np.eye(2), param_H(x_[1])), np.eye(2)), np.eye(2))
+    H_ += np.kron(np.kron(np.kron(np.eye(2), np.eye(2)), param_H(x_[2])), np.eye(2))
+    H_ += np.kron(np.kron(np.kron(np.eye(2), np.eye(2)), np.eye(2)), param_H(x_[3]))
+
+    indices = generic_grandH_from_x(N = 4, c = combo, cq = qubits)
+
+    H_[indices] = x_[4] * H_
+
+    return H_
+
+find_where2multiple_h_param()

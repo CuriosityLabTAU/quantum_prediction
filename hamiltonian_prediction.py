@@ -32,7 +32,8 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True):
         # find h_a
         full_h = ['x', None, None]
         all_P = '0'
-        res_temp = general_minimize(fun_to_minimize, args_=(p_real['A'], psi_0, full_h, all_q, all_P, 4), x_0=np.array([0.0]))
+        res_temp = general_minimize(fun_to_minimize, args_=(p_real['A'], psi_0, full_h, all_q, all_P, 4),
+                                    x_0=np.array([0.0]))
         h_a = res_temp.x[0]
 
         full_h = [h_a, None, None]
@@ -48,6 +49,7 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True):
         res_temp = general_minimize(fun_to_minimize, args_=(p_real['B'], psi_0, full_h, all_q, all_P, 4),
                                     x_0=np.array([0.0]))
         h_b = res_temp.x[0]
+
         full_h = [None, h_b, None]
         p_b = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4)
         sub_q_data['p_b'] = p_real['B']
