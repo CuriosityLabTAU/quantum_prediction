@@ -22,8 +22,14 @@ def param_H(h_):
 
 def param_Hmix(g_):
     H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[1, 1], [1, -1]])
-    #todo: different h_ab here --> change the matrix
-    # H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[0, 1], [0, -1]]) + np.matrix([[-1, 0], [1, 0]])
+    return H_
+
+def multi_param_Hmix(g_, h_type):
+    #todo: TORR: different h_ab here --> change the matrix, add another h?
+    if h_type == 0:
+        H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[1, 1], [1, -1]])
+    elif h_type == 1:
+        H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[1, 0], [0, -1]]) + np.matrix([[0, 1], [1, 0]])
     return H_
 
 
@@ -174,7 +180,8 @@ def rho_mat(psi):
     return rho
 
 def reorganize_operator(qubits_order, operator_mat):
-    '''Reorganizing matrix from specific order to the right order [1,2,3,4].'''
+    '''Reorganizing matrix from specific order to the right order [1,2,3,4].
+    e.g: reorganize_operator([1,3,4,2], O) '''
     N = len(qubits_order)
     psi = create_Nqubit_state(N)
     rho_scramb = rho_mat(psi)
@@ -207,7 +214,6 @@ def reorganize_operator(qubits_order, operator_mat):
 
 
 def grandH_from_x(x_):
-    # TODO: add all off-diagonal
     H_ = np.kron(np.kron(np.kron(param_H(x_[0]), np.eye(2)), np.eye(2)), np.eye(2))
     H_ += np.kron(np.kron(np.kron(np.eye(2), param_H(x_[1])), np.eye(2)), np.eye(2))
     H_ += np.kron(np.kron(np.kron(np.eye(2), np.eye(2)), param_H(x_[2])), np.eye(2))
@@ -226,6 +232,7 @@ def grandH_from_x(x_):
 def find_where2multiple_h_param(num_of_qubits = 4, qubits = [1, 3], combo = [1, 0]):
     '''
     Find where the given qubits are equal to the combo. (qubits [0,1] == |1,0,x,x><x,x,x,x| or qubits [0,1] == |x,x,x,x><1,0,x,x| )
+    For now works only on 2 qubits.
     :param num_of_qubits: How many qubits in total in the state. (e.g. 4 qubits).
     :param qubits: Which qubits we are working on. (e.g. the first and the third would be: [0,2])
     :param combo: What is the state of each qubit.
@@ -250,17 +257,53 @@ def find_where2multiple_h_param(num_of_qubits = 4, qubits = [1, 3], combo = [1, 
     return h_multipication_place == 1
 
 
-def generic_grandH_from_x(x_, qubits = [1, 3], combo = [1, 0]):
-    # TODO: finish this function
+def create_H_from_x(x):
+    # todo: TORR - normalization
+    param = np.squeeze(x) / np.sqrt(2)
+
+    H_x = param * np.matrix([[1, 0, 0, 1],
+                             [0, 0, 0, 0],
+                             [0, 0, 0, 0],
+                             [1, 0, 0, -1]])
+
+    return H_x
+
+
+def generic_grandH_from_x(x_, qubits = [1, 3]):
+    # TODO: TORR: finish this function
     H_ = np.kron(np.kron(np.kron(param_H(x_[0]), np.eye(2)), np.eye(2)), np.eye(2))
     H_ += np.kron(np.kron(np.kron(np.eye(2), param_H(x_[1])), np.eye(2)), np.eye(2))
     H_ += np.kron(np.kron(np.kron(np.eye(2), np.eye(2)), param_H(x_[2])), np.eye(2))
     H_ += np.kron(np.kron(np.kron(np.eye(2), np.eye(2)), np.eye(2)), param_H(x_[3]))
 
-    indices = generic_grandH_from_x(N = 4, c = combo, cq = qubits)
+    ij = [[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]]
+    for i, r in enumerate(range(4,10)):
+        H_ij = np.kron(np.kron(create_H_from_x(x_[r]), np.eye(2)), np.eye(2))
+        current_order = ij[i] + list(set(np.arange(4)) - set(ij[i]))
+        H_ij = reorganize_operator(current_order, H_ij)
+        H_ += H_ij
 
-    H_[indices] = x_[4] * H_
+    # indices_00 = find_where2multiple_h_param(N = 4, c = [0,0], cq = qubits)
+    # indices_01 = find_where2multiple_h_param(N = 4, c = [0,1], cq = qubits)
+    # indices_10 = find_where2multiple_h_param(N = 4, c = [1,0], cq = qubits)
+    # indices_11 = find_where2multiple_h_param(N = 4, c = [1,1], cq = qubits)
+    #
+    # if len(x_) < 5:
+    #     h = (np.squeeze(x_[4]) / np.sqrt(2))
+    #     h_00 = h.copy()
+    #     h_01 = h.copy()
+    #     h_10 = h.copy()
+    #     h_11 = h.copy()
+    # else:
+    #     h_00 = (np.squeeze(x_[4]) / np.sqrt(2))
+    #     h_01 = (np.squeeze(x_[5]) / np.sqrt(2))
+    #     h_10 = (np.squeeze(x_[6]) / np.sqrt(2))
+    #     h_11 = (np.squeeze(x_[7]) / np.sqrt(2))
+    #
+    # H_[indices_00] = h_00 * H_
+    # H_[indices_01] = h_01 * H_
+    # H_[indices_10] = h_10 * H_
+    # H_[indices_11] = -1 * h_11 * H_
 
     return H_
 
-find_where2multiple_h_param()

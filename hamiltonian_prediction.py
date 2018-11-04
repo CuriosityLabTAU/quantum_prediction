@@ -414,6 +414,8 @@ def show_results():
     test_df.boxplot()
     plt.show()
 
+
+h_type = [0,1]
 use_U_l = [True, False]
 use_neutral_l = [False, True]
 with_mixing_l = [True, False]
@@ -426,8 +428,8 @@ for use_U in use_U_l:
             print('Running: use_U=',use_U, 'use_neutral=',use_neutral, 'with_mixing=',with_mixing)
 
             if (use_U == True) & (use_neutral == False) & (with_mixing == True): # run once
-                continue # todo: in the end comment this
                 calculations_before_question3()
+                continue # todo: in the end comment this
 
             calculate_all_data(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing)
 
