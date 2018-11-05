@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import pickle
 from minimization_functions import *
 from statsmodels.formula.api import ols
+import timeit
 
 from scipy import stats
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
@@ -26,18 +27,18 @@ def sub_q_p(df, u_id, p_id):
     return p, d
 
 
-def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True):
+def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True, h_mix_type = 0):
     sub_q_data = {}
     if h_a_and_b is None:
         # find h_a
         full_h = ['x', None, None]
         all_P = '0'
-        res_temp = general_minimize(fun_to_minimize, args_=(p_real['A'], psi_0, full_h, all_q, all_P, 4),
+        res_temp = general_minimize(fun_to_minimize, args_=(p_real['A'], psi_0, full_h, all_q, all_P, 4, h_mix_type),
                                     x_0=np.array([0.0]))
         h_a = res_temp.x[0]
 
         full_h = [h_a, None, None]
-        p_a = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4)
+        p_a = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4, h_mix_type = h_mix_type)
         sub_q_data['p_a'] = p_real['A']
         sub_q_data['p_a_h'] = p_a
         sub_q_data['p_a_err'] = res_temp.fun
@@ -46,12 +47,12 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True):
         # find h_b
         full_h = [None, 'x', None]
         all_P = '1'
-        res_temp = general_minimize(fun_to_minimize, args_=(p_real['B'], psi_0, full_h, all_q, all_P, 4),
+        res_temp = general_minimize(fun_to_minimize, args_=(p_real['B'], psi_0, full_h, all_q, all_P, 4, h_mix_type),
                                     x_0=np.array([0.0]))
         h_b = res_temp.x[0]
 
         full_h = [None, h_b, None]
-        p_b = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4)
+        p_b = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4, h_mix_type = h_mix_type)
         sub_q_data['p_b'] = p_real['B']
         sub_q_data['p_b_h'] = p_b
         sub_q_data['p_b_err'] = res_temp.fun
@@ -64,7 +65,7 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True):
         # find h_ab
         full_h = [h_a, h_b, 'x']
         all_P = 'C'
-        res_temp = general_minimize(fun_to_minimize, args_=(p_real['A_B'], psi_0, full_h, all_q, all_P, 4),
+        res_temp = general_minimize(fun_to_minimize, args_=(p_real['A_B'], psi_0, full_h, all_q, all_P, 4, h_mix_type),
                                     x_0=np.array([0.0]))
         # print(res_temp.fun)
         h_ab = res_temp.x[0]
@@ -72,14 +73,14 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True):
         h_ab = 0.0
 
     full_h = [h_a, h_b, h_ab]
-    p_ab = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4)
+    p_ab = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4, h_mix_type = h_mix_type)
     sub_q_data['p_ab'] = p_real['A_B']
     sub_q_data['p_ab_h'] = p_ab
     sub_q_data['p_ab_err'] = np.sqrt((p_real['A_B'] - p_ab) ** 2)
     # print(p_ab, p['A_B'])
 
     full_h = [h_a, h_b, h_ab]
-    total_H = compose_H(full_h, all_q, n_qubits=4)
+    total_H = compose_H(full_h, all_q, n_qubits=4, h_mix_type = h_mix_type)
     psi_final = get_psi(total_H, psi_0)
     sub_q_data['h_a'] = h_a
     sub_q_data['h_b'] = h_b
@@ -89,7 +90,7 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True):
     return sub_q_data
 
 
-def calculations_before_question3():
+def calculations_before_question3(h_mix_type):
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
 
     # go over all individuals
@@ -109,11 +110,14 @@ def calculations_before_question3():
         }
 
     # first two question, all subjects
+    t0 = 0
     all_data = {}
     for ui, u_id in enumerate(df['userID'].unique()):
 
         # select only from one group that has the same third question
-        print('calculating states for user #:',  ui, 'out of', df['userID'].unique().__len__())
+        t1 = timeit.timeit()
+        print('calculating states for user #:',  ui, 'out of', df['userID'].unique().__len__(), 'time_elapsed = ', t1-t0)
+        t0 = timeit.timeit()
         # go over questions 1 & 2
         psi_0 = uniform_psi(n_qubits=4)
         sub_data = {
@@ -135,13 +139,14 @@ def calculations_before_question3():
             sub_data['h_q'][str(all_q[0])+str(all_q[1])] = sub_data[p_id]['h_ab']
 
         all_data[u_id] = sub_data
+    fname2save = 'data/all_data_before3{}.pkl'.format(h_mix_type)
+    pickle.dump([all_data,user_same_q_list, all_q_data, q_info], open(fname2save, 'w'))
 
-    pickle.dump([all_data,user_same_q_list, all_q_data, q_info], open('data/all_data_before3.pkl', 'w'))
 
-
-def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False):
+def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False, h_mix_type = 0):
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
-    all_data = pickle.load(open('data/all_data_before3.pkl', 'r'))
+    fname2read = 'data/all_data_before3{}.pkl'.format(h_mix_type)
+    all_data = pickle.load(open(fname2read, 'r'))
 
     # todo: change once I run everything again and comment all the loop below!!!
     # all_data, user_same_q_list, all_q_data, q_info = pickle.load(open('data/all_data_before3.pkl', 'r'))
@@ -185,7 +190,7 @@ def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False):
 
             # find U for each question
             if use_U:
-                res_temp = general_minimize(fun_to_minimize_grandH, args_=(all_q, all_q_data[qn]), x_0=np.zeros([5]))
+                res_temp = general_minimize(fun_to_minimize_grandH, args_=(all_q, all_q_data[qn], h_mix_type), x_0=np.zeros([10]))
                 q_info[qn]['U'] = U_from_H(grandH_from_x(res_temp.x))
             else:
                 q_info[qn]['U'] = np.eye(16)
@@ -220,8 +225,8 @@ def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False):
     pickle.dump(q_info, open('data/q_info%s.pkl' %control_str, 'w'))
 
 
-def generate_predictions(use_U=True, with_mixing=True, use_neutral=False):
-    control_str = '_U_%s_mixing_%s_neutral_%s' % (use_U, with_mixing, use_neutral)
+def generate_predictions(use_U=True, with_mixing=True, use_neutral=False, h_mix_type = 0):
+    control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (use_U, with_mixing, use_neutral, h_mix_type)
     all_data = pickle.load(open('data/all_data%s.pkl' % control_str, 'r'))
     q_info = pickle.load(open('data/q_info%s.pkl' % control_str, 'r'))
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
@@ -257,14 +262,14 @@ def generate_predictions(use_U=True, with_mixing=True, use_neutral=False):
                 h_ab = 0.0
 
             full_h = [data['h_q'][str(all_q[0])], data['h_q'][str(all_q[1])], h_ab]
-            pred_p_a = get_general_p(full_h, all_q, '0', psi_0, n_qubits=4)
-            pred_p_b = get_general_p(full_h, all_q, '1', psi_0, n_qubits=4)
+            pred_p_a = get_general_p(full_h, all_q, '0', psi_0, n_qubits=4, h_mix_type = h_mix_type)
+            pred_p_b = get_general_p(full_h, all_q, '1', psi_0, n_qubits=4, h_mix_type = h_mix_type)
             if q_info[qn]['fal'] == 1:
-                pred_p_ab = get_general_p(full_h, all_q, 'C', psi_0, n_qubits=4)
+                pred_p_ab = get_general_p(full_h, all_q, 'C', psi_0, n_qubits=4, h_mix_type = h_mix_type)
             else:
-                pred_p_ab = get_general_p(full_h, all_q, 'D', psi_0, n_qubits=4)
+                pred_p_ab = get_general_p(full_h, all_q, 'D', psi_0, n_qubits=4, h_mix_type = h_mix_type)
 
-            total_H = compose_H(full_h, all_q, n_qubits=4)
+            total_H = compose_H(full_h, all_q, n_qubits=4, h_mix_type = h_mix_type)
             psi_final = get_psi(total_H, psi_0)
             data[p_id] = {
                 'psi': psi_final
@@ -339,8 +344,8 @@ def calculate_errors():
     test_data = {}
     for i_t, i_test in enumerate(user_test):
         test_data[i_t] = all_data[i_test]
-    res_temp = minimize(fun_to_minimize_grandH, np.zeros([5]), args=(train_data),
-                        method='SLSQP', bounds=None, options={'disp': False})
+    res_temp = minimize(fun_to_minimize_grandH, np.zeros([10]), args=(train_data, h_mix_type),
+                        method='SLSQP', bounds=None, options={'disp': False}) # todo: ***** missing all_q????? *******
     print('train error: ', res_temp.fun)
     print(res_temp.x)
 
@@ -421,19 +426,20 @@ use_neutral_l = [False, True]
 with_mixing_l = [True, False]
 
 # Loop to run all controls, except the uniform or the mean
-for use_U in use_U_l:
-    for use_neutral in use_neutral_l:
-        for with_mixing in with_mixing_l:
+for h_mix_type in h_type:
+    for use_U in use_U_l:
+        for use_neutral in use_neutral_l:
+            for with_mixing in with_mixing_l:
 
-            print('Running: use_U=',use_U, 'use_neutral=',use_neutral, 'with_mixing=',with_mixing)
+                print('Running: use_U=',use_U, 'use_neutral=',use_neutral, 'with_mixing=',with_mixing)
 
-            if (use_U == True) & (use_neutral == False) & (with_mixing == True): # run once
-                calculations_before_question3()
-                continue # todo: in the end comment this
+                if (use_U == True) & (use_neutral == False) & (with_mixing == True): # run once for every h_mix_type
+                    calculations_before_question3(h_mix_type)
+                    continue # todo: in the end comment this
 
-            calculate_all_data(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing)
+                calculate_all_data(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing)
 
-            generate_predictions(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing)
+                generate_predictions(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing)
 
 # todo: For uniform and mean it's one time calculation from the big dataframe that contains all the data.
 # todo: Right statistics comparison and plotting code. (non-parmetric paired t-test, Wilcoxon). (for each question)

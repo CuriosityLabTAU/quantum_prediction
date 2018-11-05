@@ -87,15 +87,15 @@ def get_prob_single_q(psi_0, H_, q, n_qubits=2):
     return p_
 
 
-def get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4):
-    H_ = compose_H(full_h, all_q, n_qubits)
+def get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4, h_mix_type = 0):
+    H_ = compose_H(full_h, all_q, n_qubits, h_mix_type)
     psi_dyn = get_psi(H_, psi_0)
     P_ = MultiProjection(all_P, all_q, n_qubits)
     psi_final = np.dot(P_, psi_dyn)
     p_ = norm_psi(psi_final)
     return p_
 
-def compose_H(full_h, all_q, n_qubits=4):
+def compose_H(full_h, all_q, n_qubits=4, h_mix_type = 0):
     # full_h = [h_a, h_b, h_mix]
     # all_q = [q1, q2]
     H_ = zero_H(n_qubits)
@@ -119,7 +119,7 @@ def compose_H(full_h, all_q, n_qubits=4):
     if full_h[2] == None:
         Hmix_ = np.zeros([2 ** n_qubits, 2 ** n_qubits])
     else:
-        Hmix_ = param_Hmix(full_h[2])
+        Hmix_ = param_Hmix(full_h[2], h_mix_type)
         mix = np.zeros([4, 4])
         mix[0, 0] = Hmix_[0, 0]
         mix[0, -1] = Hmix_[0, 1]
@@ -213,7 +213,7 @@ def reorganize_operator(qubits_order, operator_mat):
     return re_rho
 
 
-def grandH_from_x(x_):
+def grandH_from_x_old(x_):
     H_ = np.kron(np.kron(np.kron(param_H(x_[0]), np.eye(2)), np.eye(2)), np.eye(2))
     H_ += np.kron(np.kron(np.kron(np.eye(2), param_H(x_[1])), np.eye(2)), np.eye(2))
     H_ += np.kron(np.kron(np.kron(np.eye(2), np.eye(2)), param_H(x_[2])), np.eye(2))
@@ -269,7 +269,7 @@ def create_H_from_x(x):
     return H_x
 
 
-def generic_grandH_from_x(x_, qubits = [1, 3]):
+def grandH_from_x(x_, qubits = [1, 3]):
     # TODO: TORR: finish this function
     H_ = np.kron(np.kron(np.kron(param_H(x_[0]), np.eye(2)), np.eye(2)), np.eye(2))
     H_ += np.kron(np.kron(np.kron(np.eye(2), param_H(x_[1])), np.eye(2)), np.eye(2))
