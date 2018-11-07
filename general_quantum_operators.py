@@ -20,11 +20,11 @@ def param_H(h_):
     return H_
 
 
-def param_Hmix(g_):
+def param_Hmix_old(g_):
     H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[1, 1], [1, -1]])
     return H_
 
-def multi_param_Hmix(g_, h_type):
+def param_Hmix(g_, h_type):
     #todo: TORR: different h_ab here --> change the matrix, add another h?
     if h_type == 0:
         H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[1, 1], [1, -1]])

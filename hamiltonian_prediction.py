@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import pickle
 from minimization_functions import *
 from statsmodels.formula.api import ols
-import timeit
+import time
 
 from scipy import stats
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
@@ -110,14 +110,12 @@ def calculations_before_question3(h_mix_type):
         }
 
     # first two question, all subjects
-    t0 = 0
+    t0 = 0 ; t1 = 0
     all_data = {}
     for ui, u_id in enumerate(df['userID'].unique()):
 
         # select only from one group that has the same third question
-        t1 = timeit.timeit()
-        print('calculating states for user #:',  ui, 'out of', df['userID'].unique().__len__(), 'time_elapsed = ', t1-t0)
-        t0 = timeit.timeit()
+        t0 = time.time()
         # go over questions 1 & 2
         psi_0 = uniform_psi(n_qubits=4)
         sub_data = {
@@ -139,6 +137,10 @@ def calculations_before_question3(h_mix_type):
             sub_data['h_q'][str(all_q[0])+str(all_q[1])] = sub_data[p_id]['h_ab']
 
         all_data[u_id] = sub_data
+        t1 = time.time()
+
+        print('Calculated states for user: {}/{},\ttime elapsed = {}'.format(ui, df['userID'].unique().__len__(), np.round(t1-t0,2)))
+
     fname2save = 'data/all_data_before3{}.pkl'.format(h_mix_type)
     pickle.dump([all_data,user_same_q_list, all_q_data, q_info], open(fname2save, 'w'))
 
@@ -431,7 +433,7 @@ for h_mix_type in h_type:
         for use_neutral in use_neutral_l:
             for with_mixing in with_mixing_l:
 
-                print('Running: use_U=',use_U, 'use_neutral=',use_neutral, 'with_mixing=',with_mixing)
+                print('Running:\tUse_U = {} |\tUse_Neutral = {} |\tWith_Mixing = {} |\th_mix_type = {}'.format(use_U,use_neutral,with_mixing, h_mix_type))
 
                 if (use_U == True) & (use_neutral == False) & (with_mixing == True): # run once for every h_mix_type
                     calculations_before_question3(h_mix_type)
