@@ -92,12 +92,13 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True, h_mix
 
 def calculations_before_question3(h_mix_type):
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
+    df = df[df['user'].isin([0., 7., 8., 17.])] # Uncomment this when testing the code.
 
     # go over all individuals
     user_same_q_list = {}
     all_q_data = {}
     q_info = {}
-    for qn in df[(df.qn == 2.)].pos.unique():
+    for qn in df[(df.pos == 2.)].qn.unique():
         user_same_q_temp = df[(df.pos == 2.) & (df.qn == qn)]['userID'] #
         # user_same_q_list.append(user_same_q_temp)
         user_same_q_list[qn] = user_same_q_temp.unique()
@@ -141,33 +142,32 @@ def calculations_before_question3(h_mix_type):
 
         print('Calculated states for user: {}/{},\ttime elapsed = {}'.format(ui, df['userID'].unique().__len__(), np.round(t1-t0,2)))
 
-    fname2save = 'data/all_data_before3{}.pkl'.format(h_mix_type)
-    pickle.dump([all_data,user_same_q_list, all_q_data, q_info], open(fname2save, 'w'))
+    fname2save = 'data/all_data_before3{}.pkl'.format(int(h_mix_type))
+    pickle.dump([all_data,user_same_q_list, all_q_data, q_info], open(fname2save, 'wb'))
 
 
 def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False, h_mix_type = 0):
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
+    df = df[df['user'].isin([0., 7., 8., 17.])]
     fname2read = 'data/all_data_before3{}.pkl'.format(h_mix_type)
-    all_data = pickle.load(open(fname2read, 'r'))
+    all_data, user_same_q_list, all_q_data, q_info = pickle.load(open(fname2read, 'rb'))
 
     # todo: change once I run everything again and comment all the loop below!!!
-    # all_data, user_same_q_list, all_q_data, q_info = pickle.load(open('data/all_data_before3.pkl', 'r'))
-
-    # create list of users with the same qn in pos
-    user_same_q_list = {}
-    all_q_data = {}
-    q_info = {}
-    for qn in df[(df.qn == 2.)].pos.unique():
-        user_same_q_temp = df[(df.pos == 2.) & (df.qn == qn)]['userID'] #
-        # user_same_q_list.append(user_same_q_temp)
-        user_same_q_list[qn] = user_same_q_temp.unique()
-        all_q_data[qn] = {}
-        first_user = user_same_q_temp.values[0]
-        q_info[qn] = {
-            'q1': df[(df.pos == 2.) & (df.userID == first_user)]['q1'].values,
-            'q2': df[(df.pos == 2.) & (df.userID == first_user)]['q2'].values,
-            'fal':df[(df.pos == 2.) & (df.userID == first_user)]['fal'].values
-        }
+    # # create list of users with the same qn in pos
+    # user_same_q_list = {}
+    # all_q_data = {}
+    # q_info = {}
+    # for qn in df[(df.qn == 2.)].pos.unique():
+    #     user_same_q_temp = df[(df.pos == 2.) & (df.qn == qn)]['userID'] #
+    #     # user_same_q_list.append(user_same_q_temp)
+    #     user_same_q_list[qn] = user_same_q_temp.unique()
+    #     all_q_data[qn] = {}
+    #     first_user = user_same_q_temp.values[0]
+    #     q_info[qn] = {
+    #         'q1': df[(df.pos == 2.) & (df.userID == first_user)]['q1'].values,
+    #         'q2': df[(df.pos == 2.) & (df.userID == first_user)]['q2'].values,
+    #         'fal':df[(df.pos == 2.) & (df.userID == first_user)]['fal'].values
+    #     }
 
 
     # third question
@@ -222,16 +222,17 @@ def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False, h_mix_ty
             q_info[qn]['H_ols'] = est
 
     print('before saving pkl')
-    control_str = '_U_%s_mixing_%s_neutral_%s' % (use_U, with_mixing, use_neutral)
-    pickle.dump(all_data, open('data/all_data%s.pkl' % control_str, 'w'))
-    pickle.dump(q_info, open('data/q_info%s.pkl' %control_str, 'w'))
+    control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (use_U, with_mixing, use_neutral, h_mix_type)
+    pickle.dump(all_data, open('data/all_data%s.pkl' % control_str, 'wb'))
+    pickle.dump(q_info, open('data/q_info%s.pkl' %control_str, 'wb'))
 
 
 def generate_predictions(use_U=True, with_mixing=True, use_neutral=False, h_mix_type = 0):
     control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (use_U, with_mixing, use_neutral, h_mix_type)
-    all_data = pickle.load(open('data/all_data%s.pkl' % control_str, 'r'))
-    q_info = pickle.load(open('data/q_info%s.pkl' % control_str, 'r'))
+    all_data = pickle.load(open('data/all_data%s.pkl' % control_str, 'rb'))
+    q_info = pickle.load(open('data/q_info%s.pkl' % control_str, 'rb'))
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
+    df = df[df['user'].isin([0., 7., 8., 17.])]
 
     pred_df_dict = {}
     # go over all individuals
@@ -437,14 +438,7 @@ for h_mix_type in h_type:
 
                 if (use_U == True) & (use_neutral == False) & (with_mixing == True): # run once for every h_mix_type
                     calculations_before_question3(h_mix_type)
-                    continue # todo: in the end comment this
 
-                calculate_all_data(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing)
+                calculate_all_data(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing, h_mix_type=h_mix_type)
 
-                generate_predictions(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing)
-
-# todo: For uniform and mean it's one time calculation from the big dataframe that contains all the data.
-# todo: Right statistics comparison and plotting code. (non-parmetric paired t-test, Wilcoxon). (for each question)
-# todo: Check mean error by question/ position - to see if it goes up/down/flat.
-# todo: Add parameters to U.
-# todo: Choose different H.
+                generate_predictions(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing, h_mix_type=h_mix_type)

@@ -25,7 +25,6 @@ def param_Hmix_old(g_):
     return H_
 
 def param_Hmix(g_, h_type):
-    #todo: TORR: different h_ab here --> change the matrix, add another h?
     if h_type == 0:
         H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[1, 1], [1, -1]])
     elif h_type == 1:
@@ -270,7 +269,6 @@ def create_H_from_x(x):
 
 
 def grandH_from_x(x_, qubits = [1, 3]):
-    # TODO: TORR: finish this function
     H_ = np.kron(np.kron(np.kron(param_H(x_[0]), np.eye(2)), np.eye(2)), np.eye(2))
     H_ += np.kron(np.kron(np.kron(np.eye(2), param_H(x_[1])), np.eye(2)), np.eye(2))
     H_ += np.kron(np.kron(np.kron(np.eye(2), np.eye(2)), param_H(x_[2])), np.eye(2))
