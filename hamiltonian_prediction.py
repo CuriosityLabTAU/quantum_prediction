@@ -428,6 +428,14 @@ use_U_l = [True, False]
 use_neutral_l = [False, True]
 with_mixing_l = [True, False]
 
+print('Are you sure that:\n'
+      '1) You changed (un)comment all the necessary lines?\n'
+      '2) That all the parameters changed?\n'
+      '\ta) num_of_minimizations.\n'
+      '\tb) h_mix_type, use_U_l, use_neutral_l, with_mixing_l.')
+
+input('\n\n ############ Press any key to continue ############ ')
+
 # Loop to run all controls, except the uniform or the mean
 for h_mix_type in h_type:
     for use_U in use_U_l:
