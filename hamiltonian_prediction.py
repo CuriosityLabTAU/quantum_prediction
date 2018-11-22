@@ -13,6 +13,9 @@ from statsmodels.formula.api import ols
 from scipy.stats import wilcoxon
 from general_quantum_operators import *
 
+import os.path
+
+
 
 h_names_gen = ['0', '1', '2', '3', '01', '23']
 h_names_letter = ['A', 'B', 'C', 'D', 'AB', 'CD', 'pred']
@@ -92,7 +95,7 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True, h_mix
 
 def calculations_before_question3(h_mix_type):
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
-    df = df[df['user'].isin([0., 7., 8., 17.])] # Uncomment this when testing the code.
+    # df = df[df['user'].isin([0., 7., 8., 17.])] # Uncomment this when testing the code.
 
     # go over all individuals
     user_same_q_list = {}
@@ -148,7 +151,7 @@ def calculations_before_question3(h_mix_type):
 
 def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False, h_mix_type = 0):
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
-    df = df[df['user'].isin([0., 7., 8., 17.])]
+    # df = df[df['user'].isin([0., 7., 8., 17.])]
     fname2read = 'data/all_data_before3{}.pkl'.format(h_mix_type)
     all_data, user_same_q_list, all_q_data, q_info = pickle.load(open(fname2read, 'rb'))
 
@@ -232,7 +235,7 @@ def generate_predictions(use_U=True, with_mixing=True, use_neutral=False, h_mix_
     all_data = pickle.load(open('data/all_data%s.pkl' % control_str, 'rb'))
     q_info = pickle.load(open('data/q_info%s.pkl' % control_str, 'rb'))
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
-    df = df[df['user'].isin([0., 7., 8., 17.])]
+    # df = df[df['user'].isin([0., 7., 8., 17.])]
 
     pred_df_dict = {}
     # go over all individuals
@@ -423,7 +426,7 @@ def show_results():
     plt.show()
 
 
-h_type = [0,1]
+h_type = [0]
 use_U_l = [True, False]
 use_neutral_l = [False, True]
 with_mixing_l = [True, False]
@@ -434,7 +437,7 @@ print('Are you sure that:\n'
       '\ta) num_of_minimizations.\n'
       '\tb) h_mix_type, use_U_l, use_neutral_l, with_mixing_l.')
 
-input('\n\n ############ Press any key to continue ############ ')
+# s = input('\n\n ############ Press any key to continue ############\n')
 
 # Loop to run all controls, except the uniform or the mean
 for h_mix_type in h_type:
@@ -444,8 +447,9 @@ for h_mix_type in h_type:
 
                 print('Running:\tUse_U = {} |\tUse_Neutral = {} |\tWith_Mixing = {} |\th_mix_type = {}'.format(use_U,use_neutral,with_mixing, h_mix_type))
 
-                if (use_U == True) & (use_neutral == False) & (with_mixing == True): # run once for every h_mix_type
-                    calculations_before_question3(h_mix_type)
+                if (use_U == False) & (use_neutral == False) & (with_mixing == True):
+                    if not os.path.isfile('./data/all_data_before30.pkl') or not os.path.isfile('./data/all_data_before31.pkl'): # run once for every h_mix_type
+                        calculations_before_question3(h_mix_type)
 
                 calculate_all_data(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing, h_mix_type=h_mix_type)
 

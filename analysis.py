@@ -26,10 +26,10 @@ def ttest_or_mannwhitney(y1,y2):
 
     return s, p, ttest
 
-def load_data(umn = ['True', 'True', 'False']):
+def load_data(umn = ['True', 'True', 'False', 0]):
     df = pd.read_csv('data/new_dataframe.csv', index_col = 0)
 
-    temp = ('data/pred_df_U_%s_mixing_%s_neutral_%s.csv') % (umn[0],umn[1],umn[2])
+    temp = ('data/pred_df_U_%s_mixing_%s_neutral_%s_mix_type_%d.csv') % (umn[0],umn[1],umn[2], umn[3])
 
     pred_df = pd.read_csv(temp)
     pred_df = pred_df.rename(columns = {'Unnamed: 0': 'userID'})
@@ -76,7 +76,7 @@ def find_users_with_same_order(df):
 
 def resahpe_all_pred(df):
     '''Take the mean and uniform errors and put the under UMN'''
-    cnames = df.columns[df.columns.str.contains('err')].tolist() + ['userID', 'UMN']
+    cnames = df.columns[df.columns.str.contains('err')].tolist() + ['userID', 'UMNh']
     df1 = df[cnames]
     drop_names = df.columns[(df.columns.str.contains('mean')) | df.columns.str.contains('uniform')].tolist()
     df1 = df1.drop(drop_names, axis=1)
@@ -85,10 +85,10 @@ def resahpe_all_pred(df):
 
         # a = df[df['UMN'] == '000']
         mnames = df.columns[df.columns.str.contains(c)]
-        b = df[df['UMN'] == '000'][mnames.tolist()+['userID','UMN']]
+        b = df[df['UMNh'] == '0001'][mnames.tolist()+['userID','UMNh']]
         d = dict(zip(b[mnames].columns, mnames.str.replace('_'+c,'')))
         b = b.rename(columns = d)
-        b['UMN'] = c
+        b['UMNh'] = c
         df1 = df1.append(b)
 
     return df1
@@ -127,14 +127,14 @@ def plot_err(df):
             prob = ('p%s') % (p)
             cerr = ('q%s_%s_err') % (pos, prob)
             fig, cax = plt.subplots(1,1)
-            sns.boxplot(y = cerr, x = 'UMN', data = df, ax=cax)
+            sns.boxplot(y = cerr, x = 'UMNh', data = df, ax=cax)
 
 
 def stats_all(all_pred_err_df, df):
     '''dataframe contains all the errors data.
     Return all the wilcoxon for all questions, positions, and UMN'''
     user_same_q = find_users_with_same_order(df)
-    umn_combinations = all_pred_err_df['UMN'].unique()
+    umn_combinations = all_pred_err_df['UMNh'].unique()
 
     predictions = pd.DataFrame.from_dict({'q':[], 'pos':[], 'umn1':[], 'umn2':[], 'mean1':[], 'mean2':[], 'prob': [], 's':[], 'pvalue':[]})
     predictions_all = pd.DataFrame.from_dict({'umn1':[], 'umn2':[], 'mean1':[], 'mean2':[], 's':[], 'pvalue':[]})
@@ -150,8 +150,8 @@ def stats_all(all_pred_err_df, df):
             cerr = ('q%s_%s_err') % (pos, prob)
             for umn1 in umn_combinations:
                 for umn2 in umn_combinations:
-                    pred_err1 = cpdf[cpdf['UMN']==umn1][cerr]
-                    pred_err2 = cpdf[cpdf['UMN']==umn2][cerr]
+                    pred_err1 = cpdf[cpdf['UMNh']==umn1][cerr]
+                    pred_err2 = cpdf[cpdf['UMNh']==umn2][cerr]
                     # todo: add std columns
                     s, pv = stats.wilcoxon(pred_err1, pred_err2)
                     temp_dict = {'q': [qn],
@@ -170,8 +170,8 @@ def stats_all(all_pred_err_df, df):
     # (not per users with the same questions order)
     for umn1 in umn_combinations:
         for umn2 in umn_combinations:
-            pred_err1 = all_pred_err_df[all_pred_err_df['UMN'] == umn1].drop(['UMN', 'userID'], axis = 1)
-            pred_err2 = all_pred_err_df[all_pred_err_df['UMN'] == umn2].drop(['UMN', 'userID'], axis = 1)
+            pred_err1 = all_pred_err_df[all_pred_err_df['UMNh'] == umn1].drop(['UMNh', 'userID'], axis = 1)
+            pred_err2 = all_pred_err_df[all_pred_err_df['UMNh'] == umn2].drop(['UMNh', 'userID'], axis = 1)
             s, pv = stats.wilcoxon(pred_err1.mean(), pred_err2.mean())
             temp_dict_all = {'umn1': [umn1],
                              'umn2': [umn2],
@@ -190,46 +190,71 @@ def stats_all(all_pred_err_df, df):
 
 def create_all_data():
     '''load and build the '''
+    h_type = [1]
     use_U_l = [True, False]
     use_neutral_l = [False, True]
     with_mixing_l = [True, False]
 
     # Loop to run all controls, except the uniform or the mean
-    for u in use_U_l:
-        for n in use_neutral_l:
-            for m in with_mixing_l:
-                control_str = 'data/predictions_stats_U_%s_mixing_%s_neutral_%s.csv' % (u, m, n)
-                df, pred_df = load_data([u,m,n])
-                temp_all_pred_df = pred_df.copy()
-                temp_all_pred_df['U'] = u
-                temp_all_pred_df['mix'] = m
-                temp_all_pred_df['neutral'] = n
+    for h in h_type:
+        for u in use_U_l:
+            for n in use_neutral_l:
+                for m in with_mixing_l:
+                    control_str = 'data/predictions_stats_U_%s_mixing_%s_neutral_%s_mix_type_%d.csv' % (u, m, n, h)
+                    df, pred_df = \
+                        load_data([u,m,n,h])
+                    temp_all_pred_df = pred_df.copy()
+                    temp_all_pred_df['U'] = u
+                    temp_all_pred_df['mix'] = m
+                    temp_all_pred_df['neutral'] = n
+                    temp_all_pred_df['htype'] = h
 
-                if 'all_pred_df' in locals():
-                    all_pred_df = all_pred_df.append(temp_all_pred_df)
-                else:
-                    all_pred_df = temp_all_pred_df.copy()
+                    if 'all_pred_df' in locals():
+                        all_pred_df = all_pred_df.append(temp_all_pred_df)
+                    else:
+                        all_pred_df = temp_all_pred_df.copy()
 
     all_pred_df = all_pred_df.reset_index(drop=True)
 
-    temp_c = all_pred_df[['U', 'mix', 'neutral']].astype(int).astype(str)
-    all_pred_df['UMN'] = temp_c['U'] + temp_c['mix'] + temp_c['neutral']
+    temp_c = all_pred_df[['U', 'mix', 'neutral', 'htype']].astype(int).astype(str)
+    all_pred_df['UMNh'] = temp_c['U'] + temp_c['mix'] + temp_c['neutral'] + temp_c['htype']
     all_pred_df = calculate_err(all_pred_df)
     all_pred_df1 = resahpe_all_pred(all_pred_df) # contains only the errors, add mean and uniform
 
     return all_pred_df, all_pred_df1, df, pred_df
 
-all_pred_df, all_pred_err_df, df, pred_df = create_all_data() # load all the data with combination (UMN) column
-stats_sig_all_user, stats_sig_combined =  stats_all(all_pred_err_df, df) # calculate all wilcoxon between all the UMN combination per question number and position.
-
-all_pred_df.to_csv('analysis/all_predictions.csv', index=False)
-all_pred_err_df.to_csv('analysis/all_predictions_errros.csv', index=False)
-stats_sig_all_user.to_csv('analysis/all_predictions_stats_user.csv', index=False)
-stats_sig_combined.to_csv('analysis/all_predictions_stats_combined.csv', index=False)
-
-# plot_err(all_pred_df1)
-# plt.show()
+def prob_dist(all_pred_df):
+    '''To see the distibution of all the probabilities'''
+    a = all_pred_df.mean(axis=0)
+    a = a.drop(a.keys()[a.keys().str.contains('err')])
+    a = a.drop(['userID', 'mix', 'neutral', 'htype', 'UMNh','U'])
+    fig, ax = plt.subplots()
+    sns.distplot(a, bins=5, kde=False)
 
 
-# todo: for eac question and probability plot boxplot of all combinations
-print('finished evaluating the predictions')
+# prepare_data, infer_plots = True, False
+prepare_data, infer_plots = False, True
+if prepare_data:
+    all_pred_df, all_pred_err_df, df, pred_df = create_all_data() # load all the data with combination (UMN) column
+    stats_sig_all_user, stats_sig_combined =  stats_all(all_pred_err_df, df) # calculate all wilcoxon between all the UMN combination per question number and position.
+
+    all_pred_df.to_csv('analysis/all_predictions.csv', index=False)
+    all_pred_err_df.to_csv('analysis/all_predictions_errros.csv', index=False)
+    stats_sig_all_user.to_csv('analysis/all_predictions_stats_user.csv', index=False)
+    stats_sig_combined.to_csv('analysis/all_predictions_stats_combined.csv', index=False)
+
+    print('Finished evaluating the predictions')
+else:
+    all_pred_df        = pd.read_csv('analysis/all_predictions.csv')
+    all_pred_err_df    = pd.read_csv('analysis/all_predictions_errros.csv')
+    stats_sig_all_user = pd.read_csv('analysis/all_predictions_stats_user.csv')
+    stats_sig_combined = pd.read_csv('analysis/all_predictions_stats_combined.csv')
+
+if infer_plots:
+    plot_err(all_pred_err_df)
+    prob_dist(all_pred_df)
+    print('Plotting ended')
+    plt.show()
+
+
+

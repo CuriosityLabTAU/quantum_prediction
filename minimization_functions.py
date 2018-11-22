@@ -43,7 +43,7 @@ def fun_to_minimize_grandH(x_, all_q, all_data, h_mix_type):
 def general_minimize(f, args_, x_0):
     min_err = 100.0
     best_result = None
-    num_of_minimizations = 1
+    num_of_minimizations = 100
     for i in range(num_of_minimizations): #todo: change back to 100
         x_0_rand = np.random.random(x_0.shape) * 2.0 - 1.0
         res_temp = minimize(f, x_0_rand, args=args_, method='SLSQP', bounds=None, options={'disp': False})
