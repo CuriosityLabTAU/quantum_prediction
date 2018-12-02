@@ -1,6 +1,9 @@
 from general_quantum_operators import *
 from copy import deepcopy
 from scipy.optimize import minimize
+# from multiprocessing.dummy import Pool as ThreadPool
+from multiprocessing import cpu_count
+from itertools import product
 
 
 def fun_to_minimize(h_, real_p_, psi_0, all_h, all_q, all_P, n_qubits=2, h_mix_type = 0):
@@ -52,3 +55,27 @@ def general_minimize(f, args_, x_0):
             best_result = deepcopy(res_temp)
 
     return best_result
+
+# def general_minimize(f, args_, x_0):
+#     min_err = 100.0
+#     best_result = None
+#     num_of_minimizations = 100
+#
+#     # Creating the product for the minimization using pool and starmap.
+#     prod = product([f], [np.random.random(x_0.shape[0]) * 2.0 - 1.0 for i in range(num_of_minimizations)], [args_], ['SLSQP'],
+#                    [None], [None], [None], [None], [()], [1e-6], [None], [{'disp': False, 'maxiter': 100}])
+#
+#     # Threading the minimizations on the CPUs
+#     # with ThreadPool(cpu_count()) as p:
+#     p = ThreadPool(cpu_count())
+#     results = p.starmap(minimize, prod)
+#     p.close()
+#     p.join()
+#
+#     # Find the best result.
+#     for res_temp in results:
+#         if res_temp.fun < min_err:
+#             min_err = res_temp.fun
+#             best_result = deepcopy(res_temp)
+#
+#     return best_result

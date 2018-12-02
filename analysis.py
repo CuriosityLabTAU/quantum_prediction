@@ -130,6 +130,27 @@ def plot_err(df):
             sns.boxplot(y = cerr, x = 'UMNh', data = df, ax=cax)
 
 
+def plot_err_avg(df):
+    '''Plotting the average of the probabilities errors'''
+    probs = ['a', 'b', 'ab']
+    df1 = pd.DataFrame()
+
+    df1['UMNh'] = pd.melt(df, id_vars=['UMNh'], value_vars=list(df.columns[df.columns.str.contains('pab_')]))['UMNh']
+
+    for p in probs:
+        prob = ('p%s_') % (p)
+        df1[prob] = pd.melt(df, id_vars=['UMNh'], value_vars=list(df.columns[df.columns.str.contains(prob)]))['value']
+        ######### plot average per probability
+        fig, cax = plt.subplots(1, 1)
+        sns.boxplot(y=prob, x='UMNh', data=df1, ax = cax)
+
+    ######## plot average per UMNh combination
+    fig, cax = plt.subplots(1, 1)
+    df2 = pd.melt(df1, id_vars=['UMNh'], value_vars=list(df1.columns[df1.columns.str.contains('p')]))
+    sns.boxplot(y = 'value', x = 'UMNh', data = df2, ax = cax)
+    cax.set_ylabel('Total average error')
+
+
 def stats_all(all_pred_err_df, df):
     '''dataframe contains all the errors data.
     Return all the wilcoxon for all questions, positions, and UMN'''
@@ -190,7 +211,7 @@ def stats_all(all_pred_err_df, df):
 
 def create_all_data():
     '''load and build the '''
-    h_type = [1]
+    h_type = [0,1]
     use_U_l = [True, False]
     use_neutral_l = [False, True]
     with_mixing_l = [True, False]
@@ -231,30 +252,32 @@ def prob_dist(all_pred_df):
     fig, ax = plt.subplots()
     sns.distplot(a, bins=5, kde=False)
 
+def main():
+    # prepare_data, infer_plots = True, False
+    prepare_data, infer_plots = False, True
+    if prepare_data:
+        all_pred_df, all_pred_err_df, df, pred_df = create_all_data() # load all the data with combination (UMN) column
+        stats_sig_all_user, stats_sig_combined =  stats_all(all_pred_err_df, df) # calculate all wilcoxon between all the UMN combination per question number and position.
 
-# prepare_data, infer_plots = True, False
-prepare_data, infer_plots = False, True
-if prepare_data:
-    all_pred_df, all_pred_err_df, df, pred_df = create_all_data() # load all the data with combination (UMN) column
-    stats_sig_all_user, stats_sig_combined =  stats_all(all_pred_err_df, df) # calculate all wilcoxon between all the UMN combination per question number and position.
+        all_pred_df.to_csv('analysis/all_predictions.csv', index=False)
+        all_pred_err_df.to_csv('analysis/all_predictions_errros.csv', index=False)
+        stats_sig_all_user.to_csv('analysis/all_predictions_stats_user.csv', index=False)
+        stats_sig_combined.to_csv('analysis/all_predictions_stats_combined.csv', index=False)
 
-    all_pred_df.to_csv('analysis/all_predictions.csv', index=False)
-    all_pred_err_df.to_csv('analysis/all_predictions_errros.csv', index=False)
-    stats_sig_all_user.to_csv('analysis/all_predictions_stats_user.csv', index=False)
-    stats_sig_combined.to_csv('analysis/all_predictions_stats_combined.csv', index=False)
+        print('Finished evaluating the predictions')
+    else:
+        all_pred_df        = pd.read_csv('analysis/all_predictions.csv')
+        all_pred_err_df    = pd.read_csv('analysis/all_predictions_errros.csv')
+        stats_sig_all_user = pd.read_csv('analysis/all_predictions_stats_user.csv')
+        stats_sig_combined = pd.read_csv('analysis/all_predictions_stats_combined.csv')
 
-    print('Finished evaluating the predictions')
-else:
-    all_pred_df        = pd.read_csv('analysis/all_predictions.csv')
-    all_pred_err_df    = pd.read_csv('analysis/all_predictions_errros.csv')
-    stats_sig_all_user = pd.read_csv('analysis/all_predictions_stats_user.csv')
-    stats_sig_combined = pd.read_csv('analysis/all_predictions_stats_combined.csv')
+    if infer_plots:
+        # plot_err(all_pred_err_df)
+        # prob_dist(all_pred_df)
+        plot_err_avg(all_pred_err_df)
+        print('Plotting ended')
+        plt.show()
 
-if infer_plots:
-    plot_err(all_pred_err_df)
-    prob_dist(all_pred_df)
-    print('Plotting ended')
-    plt.show()
-
-
+if __name__ == '__main__':
+    main()
 

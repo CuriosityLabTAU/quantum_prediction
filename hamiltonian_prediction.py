@@ -447,6 +447,9 @@ for h_mix_type in h_type:
 
                 print('Running:\tUse_U = {} |\tUse_Neutral = {} |\tWith_Mixing = {} |\th_mix_type = {}'.format(use_U,use_neutral,with_mixing, h_mix_type))
 
+                control_str = 'pred_df_U_%s_mixing_%s_neutral_%s_mix_type_%d.csv' % (use_U, with_mixing, use_neutral, h_mix_type)
+                if os.path.isfile('./data/' + control_str): continue
+
                 if (use_U == False) & (use_neutral == False) & (with_mixing == True):
                     if not os.path.isfile('./data/all_data_before30.pkl') or not os.path.isfile('./data/all_data_before31.pkl'): # run once for every h_mix_type
                         calculations_before_question3(h_mix_type)
