@@ -272,9 +272,9 @@ def main():
         stats_sig_combined = pd.read_csv('analysis/all_predictions_stats_combined.csv')
 
     if infer_plots:
-        # plot_err(all_pred_err_df)
+        plot_err(all_pred_err_df)
         # prob_dist(all_pred_df)
-        plot_err_avg(all_pred_err_df)
+        # plot_err_avg(all_pred_err_df)
         print('Plotting ended')
         plt.show()
 

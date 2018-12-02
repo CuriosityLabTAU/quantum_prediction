@@ -4,7 +4,6 @@ import pickle
 from minimization_functions import *
 from statsmodels.formula.api import ols
 import time
-
 from scipy import stats
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from statsmodels.stats.multicomp import MultiComparison
@@ -12,6 +11,7 @@ import statsmodels.api as sm
 from statsmodels.formula.api import ols
 from scipy.stats import wilcoxon
 from general_quantum_operators import *
+from itertools import product
 
 import os.path
 
@@ -427,9 +427,12 @@ def show_results():
 
 
 h_type = [0]
-use_U_l = [True, False]
-use_neutral_l = [False, True]
-with_mixing_l = [True, False]
+use_U_l = [True]
+use_neutral_l = [False]
+with_mixing_l = [True]
+
+# create all the possible combination of the parameters
+comb = product(h_type, use_U_l, use_neutral_l, with_mixing_l)
 
 print('Are you sure that:\n'
       '1) You changed (un)comment all the necessary lines?\n'
@@ -440,22 +443,20 @@ print('Are you sure that:\n'
 # s = input('\n\n ############ Press any key to continue ############\n')
 
 # Loop to run all controls, except the uniform or the mean
-for h_mix_type in h_type:
-    for use_U in use_U_l:
-        for use_neutral in use_neutral_l:
-            for with_mixing in with_mixing_l:
+for h_mix_type, use_U, use_neutral, with_mixing in comb:
 
-                print('Running:\tUse_U = {} |\tUse_Neutral = {} |\tWith_Mixing = {} |\th_mix_type = {}'.format(use_U,use_neutral,with_mixing, h_mix_type))
+    print('Running:\tUse_U = {} |\tUse_Neutral = {} |\tWith_Mixing = {} |\th_mix_type = {}'.format(use_U,use_neutral,with_mixing, h_mix_type))
 
-                control_str = 'pred_df_U_%s_mixing_%s_neutral_%s_mix_type_%d.csv' % (use_U, with_mixing, use_neutral, h_mix_type)
-                if os.path.isfile('./data/' + control_str):
-                    print('Already calculated everything for this combination')
-                    continue
+    control_str = 'pred_df_U_%s_mixing_%s_neutral_%s_mix_type_%d.csv' % (use_U, with_mixing, use_neutral, h_mix_type)
+    if os.path.isfile('./data/' + control_str):
+        print('Already calculated everything for this combination')
+        continue
 
-                if (use_U == False) & (use_neutral == False) & (with_mixing == True):
-                    if not os.path.isfile('./data/all_data_before30.pkl') or not os.path.isfile('./data/all_data_before31.pkl'): # run once for every h_mix_type
-                        calculations_before_question3(h_mix_type)
+    # if (use_U == False) & (use_neutral == False) & (with_mixing == True):
+    # run once for every h_mix_type:
+    if not os.path.isfile('./data/all_data_before30.pkl') or not os.path.isfile('./data/all_data_before31.pkl'):
+        calculations_before_question3(h_mix_type)
 
-                calculate_all_data(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing, h_mix_type=h_mix_type)
+    calculate_all_data(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing, h_mix_type=h_mix_type)
 
-                generate_predictions(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing, h_mix_type=h_mix_type)
+    generate_predictions(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing, h_mix_type=h_mix_type)

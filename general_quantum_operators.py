@@ -54,9 +54,9 @@ def MultiProjection(q_str, all_q, n_qubits=2):
         P_ = Projection(all_q[0], n_qubits)
     elif q_str == '1':
         P_ = Projection(all_q[1], n_qubits)
-    elif q_str == 'C':
+    elif q_str == 'C': # conjunction
         P_ = np.dot(Projection(all_q[0], n_qubits), Projection(all_q[1], n_qubits))
-    elif q_str == 'D':
+    elif q_str == 'D': # disjunction
         P_ = Projection(all_q[0], n_qubits) + Projection(all_q[1], n_qubits) - \
              np.dot(Projection(all_q[0], n_qubits), Projection(all_q[1], n_qubits))
     return P_
@@ -120,10 +120,20 @@ def compose_H(full_h, all_q, n_qubits=4, h_mix_type = 0):
     else:
         Hmix_ = param_Hmix(full_h[2], h_mix_type)
         mix = np.zeros([4, 4])
-        mix[0, 0] = Hmix_[0, 0]
-        mix[0, -1] = Hmix_[0, 1]
-        mix[-1, 0] = Hmix_[1, 0]
-        mix[-1, -1] = Hmix_[1, 1]
+
+        # # h_mix_type=0 [h,0,0,h;0,0,0,0;0,0,0, 0;h,0,0,-h]
+        # mix[0, 0] = Hmix_[0, 0]
+        # mix[0, -1] = Hmix_[0, 1]
+        # mix[-1, 0] = Hmix_[1, 0]
+        # mix[-1, -1] = Hmix_[1, 1]
+
+        # [1,0,0,0;0,1,h,0;0,h,1,0;0,0,0,1]
+        mix[0, 0] = 1
+        mix[1, 1] = 1
+        mix[2, 2] = 1
+        mix[3, 3] = 1
+        mix[1, 2] = Hmix_[0, 0]
+        mix[2, 1] = Hmix_[0, 0]
 
         for q in range(n_qubits - 2):
             mix = np.kron(mix, np.eye(2))
