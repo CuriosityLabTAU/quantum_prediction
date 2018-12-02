@@ -1,7 +1,7 @@
 from general_quantum_operators import *
 from copy import deepcopy
 from scipy.optimize import minimize
-# from multiprocessing.dummy import Pool as ThreadPool
+from multiprocessing.dummy import Pool as ThreadPool
 from multiprocessing import cpu_count
 from itertools import product
 
@@ -57,6 +57,8 @@ def general_minimize(f, args_, x_0):
     return best_result
 
 # def general_minimize(f, args_, x_0):
+#     '''minimization using threading'''
+#     print('threading')
 #     min_err = 100.0
 #     best_result = None
 #     num_of_minimizations = 100
