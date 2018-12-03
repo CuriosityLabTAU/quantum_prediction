@@ -231,9 +231,9 @@ def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False, h_mix_ty
 
 
 def generate_predictions(use_U=True, with_mixing=True, use_neutral=False, h_mix_type = 0):
-    control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (use_U, with_mixing, use_neutral, h_mix_type)
-    all_data = pickle.load(open('data/all_data%s.pkl' % control_str, 'rb'))
-    q_info = pickle.load(open('data/q_info%s.pkl' % control_str, 'rb'))
+                                                                                                                                                                                                                                                                                                                                                                                                                                    control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (use_U, with_mixing, use_neutral, h_mix_type)
+                                                                                                                                                                                                                                                                                                                                                                                                                                    all_data = pickle.load(open('data/all_data%s.pkl' % control_str, 'rb'))
+                                                                                                                                                                                                                                                                                                                                                                                                                                    q_info = pickle.load(open('data/q_info%s.pkl' % control_str, 'rb'))
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
     # df = df[df['user'].isin([0., 7., 8., 17.])]
 
@@ -373,25 +373,24 @@ def calculate_errors():
     test_err_uniform = []
 
     for u_id, data in all_data.items():
-        p_a_calc, p_b_calc = get_p_from_grandH(grand_U, data)
-        data['2']['p_a_calc'] = p_a_calc
-        data['2']['p_b_calc'] = p_b_calc
+                            p_a_calc, p_b_calc = get_p_from_grandH(grand_U, data)
+                            data['2']['p_a_calc'] = p_a_calc
+                            data['2']['p_b_calc'] = p_b_calc
 
-        p_a_calc, p_b_calc = get_p_from_grandH(grand_I, data)
-        data['2']['p_a_calc_I'] = p_a_calc
-        data['2']['p_b_calc_I'] = p_b_calc
+                            p_a_calc, p_b_calc = get_p_from_grandH(grand_I, data)
+                            data['2']['p_a_calc_I'] = p_a_calc
+                            data['2']['p_b_calc_I'] = p_b_calc
+                                                            test_err_U.append((data['2']['p_a'] - data['2']['p_a_calc']) ** 2)
+                                                                                                                                                                                        test_err_U.append((data['2']['p_b'] - data['2']['p_b_calc']) ** 2)
 
-        test_err_U.append((data['2']['p_a'] - data['2']['p_a_calc']) ** 2)
-        test_err_U.append((data['2']['p_b'] - data['2']['p_b_calc']) ** 2)
+                            test_err_I.append((data['2']['p_a'] - data['2']['p_a_calc_I']) ** 2)
+                            test_err_I.append((data['2']['p_b'] - data['2']['p_b_calc_I']) ** 2)
 
-        test_err_I.append((data['2']['p_a'] - data['2']['p_a_calc_I']) ** 2)
-        test_err_I.append((data['2']['p_b'] - data['2']['p_b_calc_I']) ** 2)
+                            test_err_mean_train.append((np.mean(train_p[:, 0]) - data['2']['p_a']) ** 2)
+                            test_err_mean_train.append((np.mean(train_p[:, 1]) - data['2']['p_b']) ** 2)
 
-        test_err_mean_train.append((np.mean(train_p[:, 0]) - data['2']['p_a']) ** 2)
-        test_err_mean_train.append((np.mean(train_p[:, 1]) - data['2']['p_b']) ** 2)
-
-        test_err_uniform.append((0.5 - data['2']['p_a']) ** 2)
-        test_err_uniform.append((0.5 - data['2']['p_b']) ** 2)
+                            test_err_uniform.append((0.5 - data['2']['p_a']) ** 2)
+                            test_err_uniform.append((0.5 - data['2']['p_b']) ** 2)
 
     print('test error: ', np.sqrt(np.mean(test_err_U)), np.sqrt(np.std(test_err_U)))
     print('test error I : ', np.sqrt(np.mean(test_err_I)), np.sqrt(np.std(test_err_I)))
