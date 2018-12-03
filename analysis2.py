@@ -25,7 +25,10 @@ def visualize_U():
     all_data = pickle.load(open('data_all/all_data%s.pkl' % control_str, 'rb'))
     q_info = pickle.load(open('data_all/q_info%s.pkl' % control_str, 'rb'))
 
-    with open('data.json', 'wb') as fp:
+    with open('data1.txt', 'w') as f:
+        f.write(str(q_info))
+
+    with open('data.txt', 'wb') as fp:
         # json.dump(q_info, fp)
         fp.write(repr(q_info))
 
