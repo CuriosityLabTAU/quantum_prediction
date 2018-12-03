@@ -2,6 +2,7 @@ from general_quantum_operators import *
 import pickle
 import json
 import matplotlib.pyplot as plt
+import pandas as pd
 # best combination is UMNh = 1100
 
 
@@ -25,12 +26,7 @@ def visualize_U():
     all_data = pickle.load(open('data_all/all_data%s.pkl' % control_str, 'rb'))
     q_info = pickle.load(open('data_all/q_info%s.pkl' % control_str, 'rb'))
 
-    with open('data1.txt', 'w') as f:
-        f.write(str(q_info))
-
-    with open('data.txt', 'wb') as fp:
-        # json.dump(q_info, fp)
-        fp.write(repr(q_info))
+    pd.DataFrame.from_dict(q_info).to_csv('q_info_pd.csv')
 
     fig, ax = plt.subplots(2,2)
     for i, q in enumerate(range(2,6)):
