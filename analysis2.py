@@ -3,6 +3,7 @@ import pickle
 import matplotlib.pyplot as plt
 # best combination is UMNh = 1100
 
+
 def prob_from_psi_1111():
     n_qubits = 4
     h_mix_type = 0
@@ -17,6 +18,7 @@ def prob_from_psi_1111():
     p_ = norm_psi(psi_final)
     print(p_)
 
+
 def visualize_U():
     control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (True, True, False, 0)
     all_data = pickle.load(open('data_all/all_data%s.pkl' % control_str, 'rb'))
@@ -27,8 +29,6 @@ def visualize_U():
         ax[i/2, i%2].imshow(q_info[q]['U'].real)
         ax[i/2, i%2].set_title('q{}'.format(q))
 
-
-    print()
 
 def main():
     # prob_from_psi_1111()
