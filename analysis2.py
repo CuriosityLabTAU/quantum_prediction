@@ -43,7 +43,7 @@ def visualize_U():
 def main():
     prob_from_psi_1111()
     visualize_U()
-    # plt.show()
+    plt.show()
 
 if __name__ == '__main__':
     main()
