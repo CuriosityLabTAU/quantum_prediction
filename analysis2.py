@@ -13,6 +13,10 @@ def prob_from_psi_1111():
     n_qubits = 4
     h_mix_type = 0
     psi_0 = uniform_psi(n_qubits)
+
+    plus = np.array([1,0,0,1]) / np.sqrt(2)
+    psi_0 = np.kron(plus, plus)
+
     full_h = [None, None, None]
     all_q = [0,1]
     all_P = '0' #'D' # 0,1,C,D

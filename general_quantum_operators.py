@@ -64,8 +64,11 @@ def MultiProjection(q_str, all_q, n_qubits=2):
 
 
 def uniform_psi(n_qubits=2):
-    dim_ = 2 ** n_qubits
-    psi_ = np.ones([dim_,1]) / np.sqrt(dim_)
+    # dim_ = 2 ** n_qubits
+    # psi_ = np.ones([dim_,1]) / np.sqrt(dim_)
+
+    plus = np.array([1, 0, 0, 1]) / np.sqrt(2)
+    psi_ = np.kron(plus, plus)
     return psi_
 
 
