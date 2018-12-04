@@ -3,6 +3,10 @@ import numpy as np
 import scipy.stats as stats
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os
+from itertools import product
+
+sns.set_context('notebook')
 
 def ttest_or_mannwhitney(y1,y2):
     '''
@@ -26,10 +30,10 @@ def ttest_or_mannwhitney(y1,y2):
 
     return s, p, ttest
 
-def load_data(umn = ['True', 'True', 'False', 0]):
+def load_data(umn = ['True', 'True', 'False', 0], path = 'data/'):
     df = pd.read_csv('data/new_dataframe.csv', index_col = 0)
 
-    temp = ('data/pred_df_U_%s_mixing_%s_neutral_%s_mix_type_%d.csv') % (umn[0],umn[1],umn[2], umn[3])
+    temp = (path + 'pred_df_U_%s_mixing_%s_neutral_%s_mix_type_%d.csv') % (umn[0],umn[1],umn[2], umn[3])
 
     pred_df = pd.read_csv(temp)
     pred_df = pred_df.rename(columns = {'Unnamed: 0': 'userID'})
@@ -209,31 +213,29 @@ def stats_all(all_pred_err_df, df):
     predictions_all = predictions_all.reset_index(drop=True)
     return predictions, predictions_all
 
-def create_all_data():
+def create_all_data(path):
     '''load and build the '''
-    h_type = [0,1]
+    h_type = [0,1,2]
     use_U_l = [True, False]
     use_neutral_l = [False, True]
     with_mixing_l = [True, False]
 
+    comb = product(h_type, use_U_l, use_neutral_l, with_mixing_l)
     # Loop to run all controls, except the uniform or the mean
-    for h in h_type:
-        for u in use_U_l:
-            for n in use_neutral_l:
-                for m in with_mixing_l:
-                    control_str = 'data/predictions_stats_U_%s_mixing_%s_neutral_%s_mix_type_%d.csv' % (u, m, n, h)
-                    df, pred_df = \
-                        load_data([u,m,n,h])
-                    temp_all_pred_df = pred_df.copy()
-                    temp_all_pred_df['U'] = u
-                    temp_all_pred_df['mix'] = m
-                    temp_all_pred_df['neutral'] = n
-                    temp_all_pred_df['htype'] = h
+    for h, u, n, m in comb:
+        if not os.path.isfile(path +'pred_df_U_%s_mixing_%s_neutral_%s_mix_type_%d.csv' % (u,m,n,h)):
+            continue
+        df, pred_df = load_data([u,m,n,h], path)
+        temp_all_pred_df = pred_df.copy()
+        temp_all_pred_df['U'] = u
+        temp_all_pred_df['mix'] = m
+        temp_all_pred_df['neutral'] = n
+        temp_all_pred_df['htype'] = h
 
-                    if 'all_pred_df' in locals():
-                        all_pred_df = all_pred_df.append(temp_all_pred_df)
-                    else:
-                        all_pred_df = temp_all_pred_df.copy()
+        if 'all_pred_df' in locals():
+            all_pred_df = all_pred_df.append(temp_all_pred_df)
+        else:
+            all_pred_df = temp_all_pred_df.copy()
 
     all_pred_df = all_pred_df.reset_index(drop=True)
 
@@ -256,7 +258,7 @@ def main():
     # prepare_data, infer_plots = True, False
     prepare_data, infer_plots = False, True
     if prepare_data:
-        all_pred_df, all_pred_err_df, df, pred_df = create_all_data() # load all the data with combination (UMN) column
+        all_pred_df, all_pred_err_df, df, pred_df = create_all_data('data_all/') # load all the data with combination (UMN) column
         stats_sig_all_user, stats_sig_combined =  stats_all(all_pred_err_df, df) # calculate all wilcoxon between all the UMN combination per question number and position.
 
         all_pred_df.to_csv('analysis/all_predictions.csv', index=False)

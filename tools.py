@@ -1,5 +1,6 @@
 from qutip import *
 import numpy as np
+import os
 
 def ndarray2Qobj(psi_vec, typ = 'vec', norm=False):
     '''
@@ -96,3 +97,9 @@ def reorganize_operator(qubits_order, operator_mat):
                                     rho_org[1, :, k, l] == rho_scramb[1, :, i, j]) == nq:
                         re_rho[k, l] = operator_mat[i, j]
     return re_rho
+
+
+def ensure_dir(file_path):
+    directory = os.path.dirname(file_path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
