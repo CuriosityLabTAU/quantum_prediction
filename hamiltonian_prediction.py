@@ -12,6 +12,8 @@ from statsmodels.formula.api import ols
 from scipy.stats import wilcoxon
 from general_quantum_operators import *
 from itertools import product
+from sklearn.neural_network import MLPRegressor
+from tools import time_fn
 
 import os.path
 
@@ -195,10 +197,20 @@ def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False, h_mix_ty
 
             # find U for each question
             if use_U:
-                res_temp = general_minimize(fun_to_minimize_grandH, args_=(all_q, all_q_data[qn], h_mix_type), x_0=np.zeros([10]))
+                # res_temp = time_fn(general_minimize, fun_to_minimize_grandH, args_=(all_q, all_q_data[qn], h_mix_type), x_0=np.zeros([10]), U = True)
+
+                start = time.clock()
+                print('calculating U')
+                res_temp = general_minimize(fun_to_minimize_grandH, args_=(all_q, all_q_data[qn], h_mix_type), x_0=np.zeros([10]), U = True)
+                end = time.clock()
+                print('question %d, U optimization took %.2f s' % (qn, end - start))
+
                 q_info[qn]['U'] = U_from_H(grandH_from_x(res_temp.x))
             else:
                 q_info[qn]['U'] = np.eye(16)
+
+            start = time.clock()
+            print('building df_H, calculating h_ij for question 2')
 
             # calculate H_AB
             H_dict = {}
@@ -212,22 +224,52 @@ def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False, h_mix_ty
                     sub_data_q = get_question_H(psi_0, all_q, p_real,
                                                 [all_data[u_id]['h_q'][str(all_q[0])], all_data[u_id]['h_q'][str(all_q[1])]])
                     all_data[u_id]['h_q'][str(all_q[0])+str(all_q[1])] = sub_data_q['h_ab']
+                    all_data[u_id]['h_q'][str(all_q[0])] = sub_data_q['h_a']
+                    all_data[u_id]['h_q'][str(all_q[1])] = sub_data_q['h_b']
                     H_dict[u_id] = []
                     for hs in h_names:
                         H_dict[u_id].append(all_data[u_id]['h_q'][hs])
             df_H = pd.DataFrame.from_dict(data=H_dict, orient='index')
             df_H.columns = ['A', 'B', 'C', 'D', 'AB', 'CD', 'pred']
+            end = time.clock()
+            print('question %d, building df_H time %.2f s' % (qn, end - start))
 
-            formula = df_H.columns[-1] + '~' + df_H.columns[0]
-            for h_i in range(1, len(df_H.columns)-1):
-                formula += '+' + df_H.columns[h_i]
-            est = ols(formula=formula, data=df_H).fit()
+            start = time.clock()
+            print('calculating h_ij ann')
+            # est = pred_h_ij(df_H, method = 'ANN')
+            est = pred_h_ij(df_H, method = 'lr')
+            end = time.clock()
+            print('question %d, h_ij prediction took %.2f s' % (qn, end - start))
+
             q_info[qn]['H_ols'] = est
 
     print('before saving pkl')
     control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (use_U, with_mixing, use_neutral, h_mix_type)
     pickle.dump(all_data, open('data/all_data%s.pkl' % control_str, 'wb'))
     pickle.dump(q_info, open('data/q_info%s.pkl' %control_str, 'wb'))
+
+    df_H.to_csv('data/df_H.csv')
+
+def pred_h_ij(df_H, method = 'lr'):
+    '''
+    Creating a model to predict h_ij based on the first 3 questions.
+    :param df_H:
+    :param method: lr - linear regression
+                   ANN - beural network
+    :return: est, use: est.predict(X)
+    '''
+    if method == 'lr':
+        formula = df_H.columns[-1] + '~' + df_H.columns[0]
+        for h_i in range(1, len(df_H.columns) - 1):
+            formula += '+' + df_H.columns[h_i]
+        est = ols(formula=formula, data=df_H).fit()
+    elif method == 'ANN':
+        Xtrain = df_H.iloc[:,:6]
+        Ytrain = df_H.iloc[:,-1]
+        mlp = MLPRegressor(random_state=0, max_iter=10000)
+        est = mlp.fit(Xtrain, Ytrain)
+    return est
+
 
 
 def generate_predictions(use_U=True, with_mixing=True, use_neutral=False, h_mix_type = 0):
@@ -263,7 +305,10 @@ def generate_predictions(use_U=True, with_mixing=True, use_neutral=False, h_mix_
                     all_h['one'].append(data['h_q'][hs])
                 df_H = pd.DataFrame.from_dict(data=all_h, orient='index')
                 df_H.columns = ['A', 'B', 'C', 'D', 'AB', 'CD']
-                h_ab = q_info[qn]['H_ols'].predict(df_H).values[0]
+                try:
+                    h_ab = q_info[qn]['H_ols'].predict(df_H).values[0]
+                except:
+                    h_ab = q_info[qn]['H_ols'].predict(df_H)[0]
             else:
                 h_ab = 0.0
 
@@ -282,17 +327,20 @@ def generate_predictions(use_U=True, with_mixing=True, use_neutral=False, h_mix_
             }
 
             pred_df_col_names.append('q%d_pred_pa' % p_id)
-            pred_df_dict[u_id].append(pred_p_a[0][0])
+            # pred_df_dict[u_id].append(pred_p_a[0][0])
+            pred_df_dict[u_id].append(pred_p_a)
             pred_df_col_names.append('q%d_real_pa' % p_id)
             pred_df_dict[u_id].append(p_real['A'][0])
 
             pred_df_col_names.append('q%d_pred_pb' % p_id)
-            pred_df_dict[u_id].append(pred_p_b[0][0])
+            # pred_df_dict[u_id].append(pred_p_b[0][0])
+            pred_df_dict[u_id].append(pred_p_b)
             pred_df_col_names.append('q%d_real_pb' % p_id)
             pred_df_dict[u_id].append(p_real['B'][0])
 
             pred_df_col_names.append('q%d_pred_pab' % p_id)
-            pred_df_dict[u_id].append(pred_p_ab[0][0])
+            # pred_df_dict[u_id].append(pred_p_ab[0][0])
+            pred_df_dict[u_id].append(pred_p_ab)
             pred_df_col_names.append('q%d_real_pab' % p_id)
             pred_df_dict[u_id].append(p_real['A_B'][0])
 
@@ -426,10 +474,15 @@ def show_results():
     plt.show()
 
 
-h_type = [0]
+# h_type = [0, 1]
+# use_U_l = [True, False]
+# use_neutral_l = [False, True]
+# with_mixing_l = [True, False]
+
 use_U_l = [True]
-use_neutral_l = [False]
 with_mixing_l = [True]
+use_neutral_l = [False]
+h_type = [0]
 
 # create all the possible combination of the parameters
 comb = product(h_type, use_U_l, use_neutral_l, with_mixing_l)

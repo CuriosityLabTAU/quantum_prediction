@@ -16,7 +16,8 @@ def param_H(h_):
     if h_ is None:
         H_ = np.eye(2)
     else:
-        H_ = 1.0 / np.sqrt(1 + the_param * the_param) * np.matrix([[1, the_param], [the_param, -1]])
+        # H_ = 1.0 / np.sqrt(1 + the_param * the_param) * np.matrix([[1, the_param], [the_param, -1]])
+        H_ = 1.0 / np.sqrt(1 + the_param * the_param) * np.matrix([[1, the_param], [the_param, 1]])
     return H_
 
 
@@ -287,7 +288,7 @@ def grandH_from_x(x_, qubits = [1, 3]):
     H_ += np.kron(np.kron(np.kron(np.eye(2), np.eye(2)), param_H(x_[2])), np.eye(2))
     H_ += np.kron(np.kron(np.kron(np.eye(2), np.eye(2)), np.eye(2)), param_H(x_[3]))
 
-    ij = [[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]]
+    ij = [[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]] # qubits pairs
     for i, r in enumerate(range(4,10)):
         H_ij = np.kron(np.kron(create_H_from_x(x_[r]), np.eye(2)), np.eye(2))
         current_order = ij[i] + list(set(np.arange(4)) - set(ij[i]))

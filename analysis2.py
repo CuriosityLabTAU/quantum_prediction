@@ -9,29 +9,27 @@ import seaborn as sns
 sns.set_context('notebook')
 
 
-def prob_from_psi_1111():
+def prob_from_psi_general_initial(all_P):
+    # psi 1111?
     n_qubits = 4
     h_mix_type = 0
     psi_0 = uniform_psi(n_qubits)
 
-    plus = np.array([1,0,0,1]) / np.sqrt(2)
-    psi_0 = np.kron(plus, plus)
-
     full_h = [None, None, None]
     all_q = [0,1]
-    all_P = '0' #'D' # 0,1,C,D
     H_ = compose_H(full_h, all_q, n_qubits, h_mix_type)
     psi_dyn = get_psi(H_, psi_0)
     P_ = MultiProjection(all_P, all_q, n_qubits)
     psi_final = np.dot(P_, psi_dyn)
     p_ = norm_psi(psi_final)
-    print(p_)
+    # print(p_)
+    return p_
 
 
-def visualize_U():
+def visualize_U(data_path):
     control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (True, True, False, 0)
-    all_data = pickle.load(open('data_all/all_data%s.pkl' % control_str, 'rb'))
-    q_info = pickle.load(open('data_all/q_info%s.pkl' % control_str, 'rb'))
+    all_data = pickle.load(open(data_path + '/all_data%s.pkl' % control_str, 'rb'))
+    q_info = pickle.load(open(data_path + '/q_info%s.pkl' % control_str, 'rb'))
 
     # pd.DataFrame.from_dict(q_info).to_csv('q_info_pd.csv')
 
@@ -45,8 +43,13 @@ def visualize_U():
 
 
 def main():
-    prob_from_psi_1111()
-    visualize_U()
+    # data_path = 'data_all'
+    data_path = 'data'
+
+    all_P = ['0','1','C','D']
+    for P in all_P:
+        print('%s probability for psi = |1111> is %.2f' % (str(P), prob_from_psi_general_initial(P)))
+    visualize_U(data_path)
     plt.show()
 
 if __name__ == '__main__':

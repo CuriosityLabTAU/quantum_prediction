@@ -1,6 +1,8 @@
 from qutip import *
 import numpy as np
 import os
+import time
+
 
 def ndarray2Qobj(psi_vec, typ = 'vec', norm=False):
     '''
@@ -103,3 +105,12 @@ def ensure_dir(file_path):
     directory = os.path.dirname(file_path)
     if not os.path.exists(directory):
         os.makedirs(directory)
+
+
+def time_fn(fn, *args, **kwargs):
+    start = time.clock()
+    results = fn( *args, **kwargs )
+    end = time.clock()
+    fn_name = fn.__module__ + "." + fn.__name__
+    print fn_name + ": " + str(end-start) + "s"
+    return results

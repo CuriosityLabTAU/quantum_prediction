@@ -215,7 +215,7 @@ def stats_all(all_pred_err_df, df):
 
 def create_all_data(path):
     '''load and build the '''
-    h_type = [0,1,2]
+    h_type = [0,1,2,3,4]
     use_U_l = [True, False]
     use_neutral_l = [False, True]
     with_mixing_l = [True, False]
@@ -251,14 +251,36 @@ def prob_dist(all_pred_df):
     a = all_pred_df.mean(axis=0)
     a = a.drop(a.keys()[a.keys().str.contains('err')])
     a = a.drop(['userID', 'mix', 'neutral', 'htype', 'UMNh','U'])
-    fig, ax = plt.subplots()
-    sns.distplot(a, bins=5, kde=False)
+
+    a   = a.loc[a.index[~a.index.str.contains('pred')]]
+    # a = pd.DataFrame(a, columns = ['real_prob'])
+    # a = a.assign(prob = np.nan)
+    # a.loc[a.index[a.index.str.contains('_pa') * ~a.index.str.contains('_pab')], 'prob'] = 'a'
+    # a.loc[a.index[a.index.str.contains('_pb') * ~a.index.str.contains('_pab')], 'prob'] = 'b'
+    # a.loc[a.index[a.index.str.contains('_pab')], 'prob'] = 'ab'
+    #
+    # targets = [a.loc[a['prob'] == val] for val in a['prob'].unique()]
+    #
+    # for target in targets:
+    #     sns.distplot(target[['real_prob']], kde=False)
+
+    # sns.plt.show()
+    c = {}
+    b = all_pred_df[all_pred_df.columns[all_pred_df.columns.str.contains('real')]]
+    c['pa_real']  = b.loc[:, b.columns[b.columns.str.contains('_pa') * ~b.columns.str.contains('_pab')]].values.flatten()
+    c['pb_real']  = b.loc[:, b.columns[b.columns.str.contains('_pb') * ~b.columns.str.contains('_pab')]].values.flatten()
+    c['pab_real'] = b.loc[:, b.columns[b.columns.str.contains('_pab')]].values.flatten()
+    c = pd.DataFrame.from_dict(c)
+
+    c.hist()
 
 def main():
     # prepare_data, infer_plots = True, False
     prepare_data, infer_plots = False, True
     if prepare_data:
-        all_pred_df, all_pred_err_df, df, pred_df = create_all_data('data_all/') # load all the data with combination (UMN) column
+        # data_path = 'data_all/'
+        data_path = 'data/'
+        all_pred_df, all_pred_err_df, df, pred_df = create_all_data(data_path) # load all the data with combination (UMN) column
         stats_sig_all_user, stats_sig_combined =  stats_all(all_pred_err_df, df) # calculate all wilcoxon between all the UMN combination per question number and position.
 
         all_pred_df.to_csv('analysis/all_predictions.csv', index=False)
