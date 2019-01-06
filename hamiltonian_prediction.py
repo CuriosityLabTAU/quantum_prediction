@@ -13,7 +13,7 @@ from scipy.stats import wilcoxon
 from general_quantum_operators import *
 from itertools import product
 from sklearn.neural_network import MLPRegressor
-from tools import time_fn
+# from tools import time_fn
 
 import os.path
 
@@ -34,41 +34,52 @@ def sub_q_p(df, u_id, p_id):
 
 def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True, h_mix_type = 0):
     sub_q_data = {}
-    if h_a_and_b is None:
-        # find h_a
-        full_h = ['x', None, None]
-        all_P = '0'
-        res_temp = general_minimize(fun_to_minimize, args_=(p_real['A'], psi_0, full_h, all_q, all_P, 4, h_mix_type),
-                                    x_0=np.array([0.0]))
-        h_a = res_temp.x[0]
+    # if h_a_and_b is given, calculate the "other"/true h_a and later check it
 
-        full_h = [h_a, None, None]
-        p_a = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4, h_mix_type = h_mix_type)
+    # find h_a
+    full_h = ['x', None, None]
+    all_P = '0'
+    res_temp = general_minimize(fun_to_minimize, args_=(p_real['A'], psi_0, full_h, all_q, all_P, 4, h_mix_type),
+                                x_0=np.array([0.0]))
+    h_a = res_temp.x[0]
+
+    full_h = [h_a, None, None]
+    p_a = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4, h_mix_type = h_mix_type)
+    if h_a_and_b is None:
         sub_q_data['p_a'] = p_real['A']
         sub_q_data['p_a_h'] = p_a
         sub_q_data['p_a_err'] = res_temp.fun
-        # print(p_a, p['A'])
+    else:
+        sub_q_data['h_a_other'] = h_a
+    # print(p_a, p['A'])
 
-        # find h_b
-        full_h = [None, 'x', None]
-        all_P = '1'
-        res_temp = general_minimize(fun_to_minimize, args_=(p_real['B'], psi_0, full_h, all_q, all_P, 4, h_mix_type),
-                                    x_0=np.array([0.0]))
-        h_b = res_temp.x[0]
+    # find h_b
+    full_h = [None, 'x', None]
+    all_P = '1'
+    res_temp = general_minimize(fun_to_minimize, args_=(p_real['B'], psi_0, full_h, all_q, all_P, 4, h_mix_type),
+                                x_0=np.array([0.0]))
+    h_b = res_temp.x[0]
 
-        full_h = [None, h_b, None]
-        p_b = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4, h_mix_type = h_mix_type)
+    full_h = [None, h_b, None]
+    p_b = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4, h_mix_type = h_mix_type)
+    if h_a_and_b is None:
         sub_q_data['p_b'] = p_real['B']
         sub_q_data['p_b_h'] = p_b
         sub_q_data['p_b_err'] = res_temp.fun
-        # print(p_b, p['B'])
+    else:
+        sub_q_data['h_b_other'] = h_b
+    # print(p_b, p['B'])
+
+    if h_a_and_b is None:
+        h_a = h_a
+        h_b = h_b
     else:
         h_a = h_a_and_b[0]
         h_b = h_a_and_b[1]
 
     if with_mixing:
         # find h_ab
-        full_h = [h_a, h_b, 'x']
+        full_h = [None, None, 'x']
         all_P = 'C'
         res_temp = general_minimize(fun_to_minimize, args_=(p_real['A_B'], psi_0, full_h, all_q, all_P, 4, h_mix_type),
                                     x_0=np.array([0.0]))
@@ -77,7 +88,7 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True, h_mix
     else:
         h_ab = 0.0
 
-    full_h = [h_a, h_b, h_ab]
+    full_h = [None, None, h_ab]
     p_ab = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4, h_mix_type = h_mix_type)
     sub_q_data['p_ab'] = p_real['A_B']
     sub_q_data['p_ab_h'] = p_ab

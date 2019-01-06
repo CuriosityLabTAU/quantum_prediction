@@ -271,13 +271,10 @@ def find_where2multiple_h_param(num_of_qubits = 4, qubits = [1, 3], combo = [1, 
 
 
 def create_H_from_x(x):
-    # todo: TORR - normalization
-    param = np.squeeze(x) / np.sqrt(2)
-
-    H_x = param * np.matrix([[1, 0, 0, 1],
-                             [0, 0, 0, 0],
-                             [0, 0, 0, 0],
-                             [1, 0, 0, -1]])
+    H_x = np.matrix([[1, 0, 0, 0],
+                             [0, 1, x, 0],
+                             [0, x, 1, 0],
+                             [0, 0, 0, 1]])
 
     return H_x
 
@@ -294,6 +291,8 @@ def grandH_from_x(x_, qubits = [1, 3]):
         current_order = ij[i] + list(set(np.arange(4)) - set(ij[i]))
         H_ij = reorganize_operator(current_order, H_ij)
         H_ += H_ij
+
+    H_ /= 10.0
 
     # indices_00 = find_where2multiple_h_param(N = 4, c = [0,0], cq = qubits)
     # indices_01 = find_where2multiple_h_param(N = 4, c = [0,1], cq = qubits)
