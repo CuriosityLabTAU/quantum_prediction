@@ -26,10 +26,13 @@ def param_Hmix_old(g_):
     return H_
 
 def param_Hmix(g_, h_type):
+    the_param = np.squeeze(g_)
     if h_type == 0:
-        H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[1, 1], [1, -1]])
-    elif h_type == 1:
-        H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[1, 0], [0, -1]]) + np.matrix([[0, 1], [1, 0]])
+        # H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[1, 1], [1, -1]])
+        H_ = 1.0 / np.sqrt(1 + the_param * the_param) * np.matrix([[1, the_param], [the_param, 1]])
+    # elif h_type == 1:
+    #     H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[1, 0], [0, -1]]) + np.matrix([[0, 1], [1, 0]])
+
     return H_
 
 
@@ -122,22 +125,15 @@ def compose_H(full_h, all_q, n_qubits=4, h_mix_type = 0):
     if full_h[2] == None:
         Hmix_ = np.zeros([2 ** n_qubits, 2 ** n_qubits])
     else:
-        Hmix_ = param_Hmix(full_h[2], h_mix_type)
+        Hmix_0 = param_Hmix(full_h[2], h_mix_type)
         mix = np.zeros([4, 4])
 
-        # # h_mix_type=0 [h,0,0,h;0,0,0,0;0,0,0, 0;h,0,0,-h]
-        # mix[0, 0] = Hmix_[0, 0]
-        # mix[0, -1] = Hmix_[0, 1]
-        # mix[-1, 0] = Hmix_[1, 0]
-        # mix[-1, -1] = Hmix_[1, 1]
-
-        # [1,0,0,0;0,1,h,0;0,h,1,0;0,0,0,1]
         mix[0, 0] = 1
         mix[1, 1] = 1
         mix[2, 2] = 1
         mix[3, 3] = 1
-        mix[1, 2] = Hmix_[0, 0]
-        mix[2, 1] = Hmix_[0, 0]
+        mix[1, 2] = Hmix_0[0, 0]
+        mix[2, 1] = Hmix_0[0, 0]
 
         for q in range(n_qubits - 2):
             mix = np.kron(mix, np.eye(2))

@@ -85,11 +85,13 @@ def resahpe_all_pred(df):
     drop_names = df.columns[(df.columns.str.contains('mean')) | df.columns.str.contains('uniform')].tolist()
     df1 = df1.drop(drop_names, axis=1)
 
+    default_name = df.UMNh.unique()[0]
+
     for c in ['mean', 'uniform']:
 
         # a = df[df['UMN'] == '000']
         mnames = df.columns[df.columns.str.contains(c)]
-        b = df[df['UMNh'] == '0001'][mnames.tolist()+['userID','UMNh']]
+        b = df[df['UMNh'] == default_name][mnames.tolist()+['userID','UMNh']]
         d = dict(zip(b[mnames].columns, mnames.str.replace('_'+c,'')))
         b = b.rename(columns = d)
         b['UMNh'] = c
@@ -279,6 +281,7 @@ def main():
     prepare_data, infer_plots = False, True
     if prepare_data:
         # data_path = 'data_all/'
+        # data_path = 'data_060119_after_updates_with_Goren/'
         data_path = 'data/'
         all_pred_df, all_pred_err_df, df, pred_df = create_all_data(data_path) # load all the data with combination (UMN) column
         stats_sig_all_user, stats_sig_combined =  stats_all(all_pred_err_df, df) # calculate all wilcoxon between all the UMN combination per question number and position.

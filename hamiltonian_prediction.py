@@ -106,9 +106,10 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True, h_mix
     return sub_q_data
 
 
-def calculations_before_question3(h_mix_type):
+def calculations_before_question3(use_neutral = False, with_mixing = True, h_mix_type = 0, test_code = False):
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
-    # df = df[df['user'].isin([0., 7., 8., 17.])] # Uncomment this when testing the code.
+    if test_code:
+        df = df[df['user'].isin([0., 7., 8., 17.])] # Uncomment this when testing the code.
 
     # go over all individuals
     user_same_q_list = {}
@@ -142,7 +143,7 @@ def calculations_before_question3(h_mix_type):
             p_real, d = sub_q_p(df, u_id, p_id)
             all_q = [int(d['q1'].values[0] - 1), int(d['q2'].values[0] - 1)]
 
-            sub_data[p_id] = get_question_H(psi_0, all_q, p_real)
+            sub_data[p_id] = get_question_H(psi_0, all_q, p_real,with_mixing = with_mixing, h_mix_type=h_mix_type)
 
             if use_neutral:
                 psi_0 = uniform_psi(n_qubits=4)
@@ -158,33 +159,15 @@ def calculations_before_question3(h_mix_type):
 
         print('Calculated states for user: {}/{},\ttime elapsed = {}'.format(ui, df['userID'].unique().__len__(), np.round(t1-t0,2)))
 
-    fname2save = 'data/all_data_before3{}.pkl'.format(int(h_mix_type))
+    fname2save = './data/all_data_before3_N{}_M{}_h{}.pkl'.format(str(use_neutral)[0], str(with_mixing)[0], int(h_mix_type))
     pickle.dump([all_data,user_same_q_list, all_q_data, q_info], open(fname2save, 'wb'))
 
 
 def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False, h_mix_type = 0):
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
     # df = df[df['user'].isin([0., 7., 8., 17.])]
-    fname2read = 'data/all_data_before3{}.pkl'.format(h_mix_type)
+    fname2read = './data/all_data_before3_N{}_M{}_h{}.pkl'.format(str(use_neutral)[0], str(with_mixing)[0], int(h_mix_type))
     all_data, user_same_q_list, all_q_data, q_info = pickle.load(open(fname2read, 'rb'))
-
-    # todo: change once I run everything again and comment all the loop below!!!
-    # # create list of users with the same qn in pos
-    # user_same_q_list = {}
-    # all_q_data = {}
-    # q_info = {}
-    # for qn in df[(df.qn == 2.)].pos.unique():
-    #     user_same_q_temp = df[(df.pos == 2.) & (df.qn == qn)]['userID'] #
-    #     # user_same_q_list.append(user_same_q_temp)
-    #     user_same_q_list[qn] = user_same_q_temp.unique()
-    #     all_q_data[qn] = {}
-    #     first_user = user_same_q_temp.values[0]
-    #     q_info[qn] = {
-    #         'q1': df[(df.pos == 2.) & (df.userID == first_user)]['q1'].values,
-    #         'q2': df[(df.pos == 2.) & (df.userID == first_user)]['q2'].values,
-    #         'fal':df[(df.pos == 2.) & (df.userID == first_user)]['fal'].values
-    #     }
-
 
     # third question
     print('third question')
@@ -233,7 +216,8 @@ def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False, h_mix_ty
                         psi_0 = np.dot(q_info[qn]['U'], all_data[u_id][1]['psi'])
                     p_real, d = sub_q_p(df, u_id, 2)
                     sub_data_q = get_question_H(psi_0, all_q, p_real,
-                                                [all_data[u_id]['h_q'][str(all_q[0])], all_data[u_id]['h_q'][str(all_q[1])]])
+                                                [all_data[u_id]['h_q'][str(all_q[0])], all_data[u_id]['h_q'][str(all_q[1])]],
+                                                with_mixing, h_mix_type)
                     all_data[u_id]['h_q'][str(all_q[0])+str(all_q[1])] = sub_data_q['h_ab']
                     all_data[u_id]['h_q'][str(all_q[0])] = sub_data_q['h_a']
                     all_data[u_id]['h_q'][str(all_q[1])] = sub_data_q['h_b']
@@ -246,20 +230,26 @@ def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False, h_mix_ty
             print('question %d, building df_H time %.2f s' % (qn, end - start))
 
             start = time.clock()
-            print('calculating h_ij ann')
-            # est = pred_h_ij(df_H, method = 'ANN')
-            est = pred_h_ij(df_H, method = 'lr')
+            mtd = 'lr' #'ANN'
+            print('calculating h_ij' + mtd)
+            est = pred_h_ij(df_H, method = mtd)
             end = time.clock()
             print('question %d, h_ij prediction took %.2f s' % (qn, end - start))
 
             q_info[qn]['H_ols'] = est
+
+            if 'df_H_all' in locals():
+                df_H_all = df_H_all.append(df_H)
+            else:
+                df_H_all = df_H.copy()
+            df_H_all = df_H_all.reset_index(drop=True)
 
     print('before saving pkl')
     control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (use_U, with_mixing, use_neutral, h_mix_type)
     pickle.dump(all_data, open('data/all_data%s.pkl' % control_str, 'wb'))
     pickle.dump(q_info, open('data/q_info%s.pkl' %control_str, 'wb'))
 
-    df_H.to_csv('data/df_H.csv')
+    df_H_all.to_csv('data/df_H.csv')
 
 def pred_h_ij(df_H, method = 'lr'):
     '''
@@ -486,14 +476,17 @@ def show_results():
 
 
 # h_type = [0, 1]
-# use_U_l = [True, False]
-# use_neutral_l = [False, True]
-# with_mixing_l = [True, False]
-
-use_U_l = [True]
-with_mixing_l = [True]
-use_neutral_l = [False]
 h_type = [0]
+use_U_l = [True, False]
+use_neutral_l = [False, True]
+with_mixing_l = [True, False]
+
+# use_U_l = [True]
+# with_mixing_l = [True]
+# use_neutral_l = [False]
+# h_type = [0]
+
+test_code = False
 
 # create all the possible combination of the parameters
 comb = product(h_type, use_U_l, use_neutral_l, with_mixing_l)
@@ -506,6 +499,9 @@ print('Are you sure that:\n'
 
 # s = input('\n\n ############ Press any key to continue ############\n')
 
+
+# comb = [[0, True, False, True], [0, False, True, False]]
+
 # Loop to run all controls, except the uniform or the mean
 for h_mix_type, use_U, use_neutral, with_mixing in comb:
 
@@ -516,10 +512,9 @@ for h_mix_type, use_U, use_neutral, with_mixing in comb:
         print('Already calculated everything for this combination')
         continue
 
-    # if (use_U == False) & (use_neutral == False) & (with_mixing == True):
     # run once for every h_mix_type:
-    if not os.path.isfile('./data/all_data_before30.pkl') or not os.path.isfile('./data/all_data_before31.pkl'):
-        calculations_before_question3(h_mix_type)
+    if not os.path.isfile('./data/all_data_before3_N{}_M{}_h{}.pkl'.format(str(use_neutral)[0], str(with_mixing)[0], int(h_mix_type))):
+        calculations_before_question3(use_neutral, with_mixing, h_mix_type,test_code)
 
     calculate_all_data(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing, h_mix_type=h_mix_type)
 
