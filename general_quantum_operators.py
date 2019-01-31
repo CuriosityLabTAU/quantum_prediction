@@ -268,9 +268,9 @@ def find_where2multiple_h_param(num_of_qubits = 4, qubits = [1, 3], combo = [1, 
 
 def create_H_from_x(x):
     H_x = np.matrix([[1, 0, 0, 0],
-                             [0, 1, x, 0],
-                             [0, x, 1, 0],
-                             [0, 0, 0, 1]])
+                     [0, 1, x, 0],
+                     [0, x, 1, 0],
+                     [0, 0, 0, 1]])
 
     return H_x
 
