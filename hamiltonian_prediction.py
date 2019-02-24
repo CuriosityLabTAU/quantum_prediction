@@ -323,8 +323,24 @@ def generate_predictions(use_U=True, with_mixing=True, use_neutral=False, h_mix_
 
             total_H = compose_H(full_h, all_q, n_qubits=4, h_mix_type = h_mix_type)
             psi_final = get_psi(total_H, psi_0)
+
             data[p_id] = {
-                'psi': psi_final
+                'psi': psi_final,
+                'p_ab':p_real['A_B'][0],
+                'p_b': p_real['B'][0],
+                'p_a': p_real['A'][0],
+                'p_ab_err': np.sqrt((p_real['A_B'][0] - pred_p_ab) ** 2),
+                'p_a_err':  np.sqrt((p_real['A'][0] - pred_p_a) ** 2),
+                'p_b_err':  np.sqrt((p_real['B'][0] - pred_p_b) ** 2),
+                'h_a': data['h_q'][str(all_q[0])],
+                'h_b':data['h_q'][str(all_q[1])],
+                'h_ab':h_ab,
+                'p_b_h': pred_p_b,
+                'p_a_h': pred_p_a,
+                'p_ab_h': pred_p_ab,
+                'qn': d['qn'],
+                'fal': d['fal'],
+                'irr': d['irr']
             }
 
             pred_df_col_names.append('q%d_pred_pa' % p_id)
@@ -348,6 +364,7 @@ def generate_predictions(use_U=True, with_mixing=True, use_neutral=False, h_mix_
     pred_df = pd.DataFrame.from_dict(data=pred_df_dict, orient='index')
     pred_df.columns = pred_df_col_names
     pred_df.to_csv('data/pred_df%s.csv' % control_str)
+    pickle.dump(all_data, open('data/all_data%s.pkl' % control_str, 'wb'))
 
 
 def all_data_to_csv(all_data):
