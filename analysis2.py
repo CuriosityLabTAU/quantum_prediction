@@ -46,10 +46,14 @@ def main():
     # data_path = 'data_all'
     data_path = 'data'
 
+    ### to see that the intial state gives 0.5 probability to all possible probabilities
     all_P = ['0','1','C','D']
     for P in all_P:
         print('%s probability for psi = |1111> is %.2f' % (str(P), prob_from_psi_general_initial(P)))
+
+    ### to see if there is any connection between the different Us, dependent on the the third question.
     visualize_U(data_path)
+
     plt.show()
 
 if __name__ == '__main__':
