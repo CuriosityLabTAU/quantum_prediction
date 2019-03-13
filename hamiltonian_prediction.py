@@ -208,6 +208,7 @@ def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False, h_mix_ty
 
             # calculate H_AB
             H_dict = {}
+            full_user_list = []
             for u_id in user_list:
                 if u_id in all_data:
                     if use_neutral:
@@ -224,6 +225,7 @@ def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False, h_mix_ty
                     H_dict[u_id] = []
                     for hs in h_names:
                         H_dict[u_id].append(all_data[u_id]['h_q'][hs])
+
             df_H = pd.DataFrame.from_dict(data=H_dict, orient='index')
             df_H.columns = ['A', 'B', 'C', 'D', 'AB', 'CD', 'pred']
             end = time.clock()
@@ -238,18 +240,19 @@ def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False, h_mix_ty
 
             q_info[qn]['H_ols'] = est
 
+            df_H.index = user_list
             if 'df_H_all' in locals():
                 df_H_all = df_H_all.append(df_H)
             else:
                 df_H_all = df_H.copy()
-            df_H_all = df_H_all.reset_index(drop=True)
+            # df_H_all = df_H_all.reset_index(drop=True)
 
     print('before saving pkl')
     control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (use_U, with_mixing, use_neutral, h_mix_type)
     pickle.dump(all_data, open('data/all_data%s.pkl' % control_str, 'wb'))
     pickle.dump(q_info, open('data/q_info%s.pkl' %control_str, 'wb'))
 
-    df_H_all.to_csv('data/df_H.csv')
+    df_H_all.to_csv('data/df_H%s.csv' % control_str)
 
 def pred_h_ij(df_H, method = 'lr'):
     '''

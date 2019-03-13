@@ -35,7 +35,7 @@ def visualize_U(data_path):
 
     fig, ax = plt.subplots(2,2)
     for i, q in enumerate(range(2,6)):
-        sns.heatmap(q_info[q]['U'].real, ax= ax[i/2, i%2])
+        sns.heatmap(q_info[q]['U'].real, ax= ax[i/2, i%2], vmin=-.2, vmax=.2,  cmap="RdBu")
         # ax[i/2, i%2].imshow(q_info[q]['U'].real)
         ax[i/2, i%2].set_title('q{}'.format(q))
 
