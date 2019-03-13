@@ -33,13 +33,15 @@ def visualize_U(data_path):
 
     # pd.DataFrame.from_dict(q_info).to_csv('q_info_pd.csv')
 
-    fig, ax = plt.subplots(2,2)
+    fig, ax = plt.subplots(2,2, figsize = (8,8))
     for i, q in enumerate(range(2,6)):
         sns.heatmap(q_info[q]['U'].real, ax= ax[i/2, i%2], vmin=-.2, vmax=.2,  cmap="RdBu")
+        # ax[i / 2, i % 2].invert_yaxis()
+        ax[i / 2, i % 2].xaxis.set_ticks_position('top')
         # ax[i/2, i%2].imshow(q_info[q]['U'].real)
-        ax[i/2, i%2].set_title('q{}'.format(q))
-
-    fig.savefig('figs/u_visualization.png', dpi=300)
+        ax[i/2, i%2].set_title('question (not position) {}'.format(q), y = 1.15)
+    plt.subplots_adjust(hspace = .4, wspace = .4)
+    fig.savefig('figs/u_visualization.png', dpi=300, transperent=True)
 
 
 def main():
