@@ -46,7 +46,7 @@ def fun_to_minimize_grandH(x_, all_q, all_data, h_mix_type):
 def general_minimize(f, args_, x_0, U = False):
     min_err = 100.0
     best_result = None
-    num_of_minimizations = 20
+    num_of_minimizations = 1
     x_0r = []
     # if U:
     #     num_of_minimizations = 10
