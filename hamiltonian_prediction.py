@@ -499,48 +499,52 @@ def show_results():
     test_df.boxplot()
     plt.show()
 
+def run_prediction():
+    # h_type = [0, 1]
+    h_type = [0]
+    use_U_l = [True, False]
+    use_neutral_l = [False, True]
+    with_mixing_l = [True, False]
 
-# h_type = [0, 1]
-h_type = [0]
-use_U_l = [True, False]
-use_neutral_l = [False, True]
-with_mixing_l = [True, False]
+    # use_U_l = [True]
+    # with_mixing_l = [True]
+    # use_neutral_l = [False]
+    # h_type = [0]
 
-# use_U_l = [True]
-# with_mixing_l = [True]
-# use_neutral_l = [False]
-# h_type = [0]
+    test_code = False
 
-test_code = False
+    # create all the possible combination of the parameters
+    comb = product(h_type, use_U_l, use_neutral_l, with_mixing_l)
 
-# create all the possible combination of the parameters
-comb = product(h_type, use_U_l, use_neutral_l, with_mixing_l)
+    print('Are you sure that:\n'
+          '1) You changed (un)comment all the necessary lines?\n'
+          '2) That all the parameters changed?\n'
+          '\ta) num_of_minimizations.\n'
+          '\tb) h_mix_type, use_U_l, use_neutral_l, with_mixing_l.')
 
-print('Are you sure that:\n'
-      '1) You changed (un)comment all the necessary lines?\n'
-      '2) That all the parameters changed?\n'
-      '\ta) num_of_minimizations.\n'
-      '\tb) h_mix_type, use_U_l, use_neutral_l, with_mixing_l.')
-
-# s = input('\n\n ############ Press any key to continue ############\n')
+    # s = input('\n\n ############ Press any key to continue ############\n')
 
 
-# comb = [[0, True, False, True], [0, False, True, False]]
+    # comb = [[0, True, False, True], [0, False, True, False]]
 
-# Loop to run all controls, except the uniform or the mean
-for h_mix_type, use_U, use_neutral, with_mixing in comb:
+    # Loop to run all controls, except the uniform or the mean
+    for h_mix_type, use_U, use_neutral, with_mixing in comb:
 
-    print('Running:\tUse_U = {} |\tUse_Neutral = {} |\tWith_Mixing = {} |\th_mix_type = {}'.format(use_U,use_neutral,with_mixing, h_mix_type))
+        print('Running:\tUse_U = {} |\tUse_Neutral = {} |\tWith_Mixing = {} |\th_mix_type = {}'.format(use_U,use_neutral,with_mixing, h_mix_type))
 
-    control_str = 'pred_df_U_%s_mixing_%s_neutral_%s_mix_type_%d.csv' % (use_U, with_mixing, use_neutral, h_mix_type)
-    if os.path.isfile('./data/' + control_str):
-        print('Already calculated everything for this combination')
-        continue
+        control_str = 'pred_df_U_%s_mixing_%s_neutral_%s_mix_type_%d.csv' % (use_U, with_mixing, use_neutral, h_mix_type)
+        if os.path.isfile('./data/' + control_str):
+            print('Already calculated everything for this combination')
+            continue
 
-    # run once for every h_mix_type:
-    if not os.path.isfile('./data/all_data_before3_N{}_M{}_h{}.pkl'.format(str(use_neutral)[0], str(with_mixing)[0], int(h_mix_type))):
-        calculations_before_question3(use_neutral, with_mixing, h_mix_type,test_code)
+        # run once for every h_mix_type:
+        if not os.path.isfile('./data/all_data_before3_N{}_M{}_h{}.pkl'.format(str(use_neutral)[0], str(with_mixing)[0], int(h_mix_type))):
+            calculations_before_question3(use_neutral, with_mixing, h_mix_type,test_code)
 
-    calculate_all_data(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing, h_mix_type=h_mix_type)
+        calculate_all_data(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing, h_mix_type=h_mix_type)
 
-    generate_predictions(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing, h_mix_type=h_mix_type)
+        generate_predictions(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing, h_mix_type=h_mix_type)
+
+
+if __name__ == '__main__':
+    run_prediction()

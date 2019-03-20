@@ -101,6 +101,7 @@ def get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4, h_mix_type = 0):
     p_ = norm_psi(psi_final)
     return p_
 
+
 def compose_H(full_h, all_q, n_qubits=4, h_mix_type = 0):
     # full_h = [h_a, h_b, h_mix]
     # all_q = [q1, q2]
