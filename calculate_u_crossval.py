@@ -9,11 +9,21 @@ from sklearn.model_selection import train_test_split
 
 qubits_dict = {1:'a', 2:'b', 3:'c', 4:'d'}
 
-def get_general_p_without_h(all_q, which_prob, psi, n_qubits=4):
+def get_general_p_without_h(all_q, which_prob, psi, n_qubits=4, is_normalized = False):
     '''calculate probability based on U and psi'''
     P_ = MultiProjection(which_prob, all_q, n_qubits)
     psi_final = np.dot(P_, psi)
+    # if is_normalized:
+        # psi_final /= np.linalg.norm(psi_final)
     p_ = norm_psi(psi_final)
+    return p_
+
+
+def get_general_p_without_h_trial(all_q, which_prob, psi, n_qubits=4, is_normalized = False):
+    '''calculate probability based on U and psi'''
+    P_ = MultiProjection(which_prob, all_q, n_qubits)
+    psi_final = np.dot(P_, psi)
+    p_ = np.dot(np.conjugate(np.transpose(psi_final)), psi).real / np.dot(np.conjugate(np.transpose(psi_final)), psi_final).real
     return p_
 
 def sub_sample_data(all_data, data_qn, df, users):
@@ -113,13 +123,13 @@ def calculate_all_data_cross_val(use_U=True, with_mixing=True, use_neutral=False
             temp['p_ab_real'] = [tu[2]['p_ab'][0]]
 
             ### predicted probabilities with no_h
-            temp['p_a_pred_no_h'] = [get_general_p_without_h(all_q, '0', psi_dyn, n_qubits=4)]
-            temp['p_b_pred_no_h'] = [get_general_p_without_h(all_q, '1', psi_dyn, n_qubits=4)]
+            temp['p_a_pred_no_h'] = [get_general_p_without_h(all_q, '0', psi_dyn, n_qubits=4, is_normalized=True)]
+            temp['p_b_pred_no_h'] = [get_general_p_without_h(all_q, '1', psi_dyn, n_qubits=4, is_normalized=True)]
 
             ### predicted probabilities with h
             full_h = [tu['h_q'][str(int(temp['q1'][0]) - 1)], tu['h_q'][str(int(temp['q2'][0]) - 1)], None]
-            temp['p_a_pred_with_h'] = [get_general_p(full_h, all_q, '0', psi_dyn, n_qubits=4)]
-            temp['p_b_pred_with_h'] = [get_general_p(full_h, all_q, '1', psi_dyn, n_qubits=4)]
+            temp['p_a_pred_with_h'] = [get_general_p(full_h, all_q, '0', psi_dyn, n_qubits=4, is_normalized=True)]
+            temp['p_b_pred_with_h'] = [get_general_p(full_h, all_q, '1', psi_dyn, n_qubits=4, is_normalized=True)]
 
             # ### joint probabilities
             # if q_info[qn]['fal'][0] == 1:
@@ -129,17 +139,17 @@ def calculate_all_data_cross_val(use_U=True, with_mixing=True, use_neutral=False
             # temp = pd.DataFrame(temp)
 
             ### calculate the error from the previous probabilities with NO U.
-            temp['p_a_err_pre']  = [temp['p_a_real'][0] - temp['p_a_pre'][0]]
-            temp['p_b_err_pre']  = [temp['p_b_real'][0] - temp['p_b_pre'][0]]
+            temp['p_a_err_pre']  = [np.abs(temp['p_a_real'][0] - temp['p_a_pre'][0])]
+            temp['p_b_err_pre']  = [np.abs(temp['p_b_real'][0] - temp['p_b_pre'][0])]
 
             ### calculate the error from the predicted probabilities with(out) h(a,b).
-            temp['p_a_err_real_no_h']   = [temp['p_a_real'][0] - temp['p_a_pred_no_h'][0]]
-            temp['p_b_err_real_no_h']   = [temp['p_b_real'][0] - temp['p_b_pred_no_h'][0]]
+            temp['p_a_err_real_no_h']   = [np.abs(temp['p_a_real'][0] - temp['p_a_pred_no_h'][0])]
+            temp['p_b_err_real_no_h']   = [np.abs(temp['p_b_real'][0] - temp['p_b_pred_no_h'][0])]
 
-            temp['p_a_err_real_with_h'] = [temp['p_a_real'][0] - temp['p_a_pred_with_h'][0]]
-            temp['p_b_err_real_with_h'] = [temp['p_b_real'][0] - temp['p_b_pred_with_h'][0]]
+            temp['p_a_err_real_with_h'] = [np.abs(temp['p_a_real'][0] - temp['p_a_pred_with_h'][0])]
+            temp['p_b_err_real_with_h'] = [np.abs(temp['p_b_real'][0] - temp['p_b_pred_with_h'][0])]
 
-            prediction_errors = pd.concat([prediction_errors,pd.DataFrame(temp)], axis = 0) # todo: check that this is working.
+            prediction_errors = pd.concat([prediction_errors,pd.DataFrame(temp)], axis = 0)
 
     prediction_errors.set_index('id', inplace=True)
     prediction_errors.to_csv('data/calc_U/cross_val_prediction_errors_%s.csv' % control_str)#index=False)
