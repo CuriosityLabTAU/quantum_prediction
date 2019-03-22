@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from itertools import product
 import datetime
 
+import time
+
 print('======= Started running at: %s =======' % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
 s = 0.01 # start
@@ -30,6 +32,11 @@ df = pd.DataFrame(data = c, columns = ['pa','pb','ha','hb','hab'])
 ### init psi
 dim_ = 16
 psi0 = np.ones([dim_,1]) / np.sqrt(dim_)
+
+
+t0 = time.time()
+hp.get_general_p([df['ha'][0], df['hb'][0], df['hab'][0]], [0, 1], 'C', psi0)
+print('total running time is about ~ %.1f hours' % ((time.time() - t0) * (10**2 * 21**3 / 3600)))
 
 ### calculate the proability of the conjunction based on all {hi} and the possible probs.
 df['pab'] = df.apply(lambda x: hp.get_general_p([x['ha'], x['hb'], x['hab']], [0,1], 'C', psi0)[0][0], axis = 1)
