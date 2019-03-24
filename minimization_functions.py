@@ -54,7 +54,7 @@ def general_minimize(f, args_, x_0, U = False):
         x_0r.append(np.random.randint(2, size=x_0.shape) * 2.0 - 1.0)
         x_0r.append(np.random.random(size = x_0.shape) * 2.0 - 1.0)
         x_0_rand = x_0r[np.random.randint(2)]
-        res_temp = minimize(f, x_0_rand, args=args_, method='SLSQP', bounds=None, options={'disp': False})
+        res_temp = minimize(f, x_0_rand, args=args_, method='Powell', bounds=None, options={'disp': False, 'gtol': 1e-10})
         if res_temp.fun < min_err:
             min_err = res_temp.fun
             best_result = deepcopy(res_temp)

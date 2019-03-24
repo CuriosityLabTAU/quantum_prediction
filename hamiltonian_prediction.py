@@ -42,7 +42,8 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True, h_mix
         all_P = '0'
         res_temp = general_minimize(fun_to_minimize, args_=(p_real['A'], psi_0, full_h, all_q, all_P, 4, h_mix_type),
                                     x_0=np.array([0.0]))
-        h_a = res_temp.x[0]
+        h_a = res_temp.x.flatten()[0]
+        print('error of minimization h_a: ', res_temp.fun)
 
         full_h = [h_a, None, None]
         p_a = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4, h_mix_type=h_mix_type)
@@ -52,7 +53,8 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True, h_mix
         all_P = '1'
         res_temp = general_minimize(fun_to_minimize, args_=(p_real['B'], psi_0, full_h, all_q, all_P, 4, h_mix_type),
                                     x_0=np.array([0.0]))
-        h_b = res_temp.x[0]
+        h_b = res_temp.x.flatten()[0]
+        print('error of minimization h_b: ', res_temp.fun)
 
         full_h = [None, h_b, None]
         p_b = get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4, h_mix_type=h_mix_type)
@@ -88,7 +90,10 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True, h_mix
         res_temp = general_minimize(fun_to_minimize, args_=(p_real['A_B'], psi_0, full_h, all_q, all_P, 4, h_mix_type),
                                     x_0=np.array([0.0]))
         # print(res_temp.fun)
-        h_ab = res_temp.x[0]
+        # h_ab = res_temp.x[0]
+        h_ab = res_temp.x.flatten()[0]
+        print('error of minimization h_ab: ', res_temp.fun)
+
     else:
         h_ab = 0.0
 

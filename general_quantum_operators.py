@@ -17,7 +17,10 @@ def param_H(h_):
         H_ = np.eye(2)
     else:
         # H_ = 1.0 / np.sqrt(1 + the_param * the_param) * np.matrix([[1, the_param], [the_param, -1]])
-        H_ = 1.0 / np.sqrt(1 + the_param * the_param) * np.matrix([[1, the_param], [the_param, 1]])
+        # H_ = 1.0 / np.sqrt(1 + the_param * the_param) * np.matrix([[1, 1j * the_param], [-1j *the_param, 1]])
+        # H_ = np.matrix([[1, 1j * the_param], [-1j *the_param, 1]])
+        H_ = np.matrix([[0, 1j * the_param], [-1j * the_param, 0]])
+
     return H_
 
 
@@ -29,7 +32,8 @@ def param_Hmix(g_, h_type):
     the_param = np.squeeze(g_)
     if h_type == 0:
         # H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[1, 1], [1, -1]])
-        H_ = 1.0 / np.sqrt(1 + the_param * the_param) * np.matrix([[1, the_param], [the_param, 1]])
+        # H_ = 1.0 / np.sqrt(1 + the_param * the_param) * np.matrix([[1, 1j * the_param], [-1j * the_param, 1]])
+        H_ = np.matrix([[1, 1j * the_param], [-1j * the_param, 1]])
     # elif h_type == 1:
     #     H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[1, 0], [0, -1]]) + np.matrix([[0, 1], [1, 0]])
 
@@ -37,7 +41,7 @@ def param_Hmix(g_, h_type):
 
 
 def U_from_H(H_):
-    U_ = expm(-1j * np.pi / 2.0 * H_)
+    U_ = expm(-1j * (np.pi / 2.0) * H_)
     return U_
 
 
@@ -67,12 +71,13 @@ def MultiProjection(q_str, all_q, n_qubits=2):
 
 
 
-def uniform_psi(n_qubits=2):
-    # dim_ = 2 ** n_qubits
-    # psi_ = np.ones([dim_,1]) / np.sqrt(dim_)
-
-    plus = np.array([1, 0, 0, 1]) / np.sqrt(2)
-    psi_ = np.kron(plus, plus)
+def uniform_psi(n_qubits=2, state = 'uniform'):
+    if state == 'uniform':
+        dim_ = 2 ** n_qubits
+        psi_ = np.ones([dim_,1]) / np.sqrt(dim_)
+    if state == 'plus':
+        plus = np.array([1, 0, 0, 1]) / np.sqrt(2)
+        psi_ = np.kron(plus, plus).reshape((16,1))
     return psi_
 
 
@@ -109,34 +114,44 @@ def compose_H(full_h, all_q, n_qubits=4, h_mix_type = 0):
     # all_q = [q1, q2]
     H_ = zero_H(n_qubits)
 
-    for q in range(n_qubits):
-        if q == 0:
-            if q == all_q[0]:
-                H_ = param_H(full_h[0])
-            elif q ==  all_q[1]:
-                H_ = param_H(full_h[1])
+    if full_h[0] != None or full_h[1] != None:
+        for q in range(n_qubits):
+            if q == 0:
+                if q == all_q[0]:
+                    H_ = param_H(full_h[0])
+                elif q ==  all_q[1]:
+                    H_ = param_H(full_h[1])
+                else:
+                    H_ = np.eye(2)
             else:
-                H_ = np.eye(2)
-        else:
-            if q == all_q[0]:
-                H_ = np.kron(H_, param_H(full_h[0]))
-            elif q == all_q[1]:
-                H_ = np.kron(H_, param_H(full_h[1]))
-            else:
-                H_ = np.kron(H_, np.eye(2))
+                if q == all_q[0]:
+                    H_ = np.kron(H_, param_H(full_h[0]))
+                elif q == all_q[1]:
+                    H_ = np.kron(H_, param_H(full_h[1]))
+                else:
+                    H_ = np.kron(H_, np.eye(2))
 
     if full_h[2] == None:
         Hmix_ = np.zeros([2 ** n_qubits, 2 ** n_qubits])
     else:
         Hmix_0 = param_Hmix(full_h[2], h_mix_type)
-        mix = np.zeros([4, 4])
+        mix = np.matrix(np.zeros([4,4]), dtype='complex64')
 
-        mix[0, 0] = 1
-        mix[1, 1] = 1
-        mix[2, 2] = 1
-        mix[3, 3] = 1
-        mix[1, 2] = Hmix_0[0, 0]
-        mix[2, 1] = Hmix_0[0, 0]
+        # for i in range(4):
+        #     for j in range(4):
+        #         if i<j:
+        #             mix[i, j] = Hmix_0[0, 1]
+        #         elif i>j:
+        #             mix[i, j] = Hmix_0[1, 0]
+        #         else:
+        #             mix[i, j] = 1.0
+        mix[0, 3] = Hmix_0[0, 1]
+        mix[1, 3] = Hmix_0[0, 1]
+        mix[2, 3] = Hmix_0[0, 1]
+        mix[3, 0] = Hmix_0[1, 0]
+        mix[3, 1] = Hmix_0[1, 0]
+        mix[3, 2] = Hmix_0[1, 0]
+        # mix[3, 3] = 1.0
 
         for q in range(n_qubits - 2):
             mix = np.kron(mix, np.eye(2))
@@ -200,7 +215,7 @@ def reorganize_operator(qubits_order, operator_mat):
     rho_org = np.copy(rho_scramb)
     nq = qubits_order.__len__()
     nr = nq ** 2
-    re_rho = np.zeros([nr, nr])
+    re_rho = np.zeros([nr, nr], dtype='complex64')
     nps = [0,1]
     # Scrambling rho according to given qubits order
     for i in range(0, nr):
@@ -270,11 +285,21 @@ def find_where2multiple_h_param(num_of_qubits = 4, qubits = [1, 3], combo = [1, 
 
 
 def create_H_from_x(x):
-    H_x = np.matrix([[1, 0, 0, 0],
-                     [0, 1, x, 0],
-                     [0, x, 1, 0],
-                     [0, 0, 0, 1]])
+    # H_x = np.matrix([[1, 0, 0, 0],
+    #                  [0, 1, x, 0],
+    #                  [0, x, 1, 0],
+    #                  [0, 0, 0, 1]])
 
+    mix = np.matrix(np.zeros([4, 4]), dtype='complex64')
+
+    mix[0, 3] = 1j * x
+    mix[1, 3] = 1j * x
+    mix[2, 3] = 1j * x
+    mix[3, 0] = -1j * x
+    mix[3, 1] = -1j * x
+    mix[3, 2] = -1j * x
+
+    H_x = mix.copy()
     return H_x
 
 
@@ -291,7 +316,7 @@ def grandH_from_x(x_, qubits = [1, 3]):
         H_ij = reorganize_operator(current_order, H_ij)
         H_ += H_ij
 
-    H_ /= 10.0
+    # H_ /= 10.0
 
     # indices_00 = find_where2multiple_h_param(N = 4, c = [0,0], cq = qubits)
     # indices_01 = find_where2multiple_h_param(N = 4, c = [0,1], cq = qubits)
