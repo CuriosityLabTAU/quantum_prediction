@@ -243,6 +243,9 @@ def create_all_data(path):
 
     temp_c = all_pred_df[['U', 'mix', 'neutral', 'htype']].astype(int).astype(str)
     all_pred_df['UMNh'] = temp_c['U'] + temp_c['mix'] + temp_c['neutral'] + temp_c['htype']
+    all_pred_df[all_pred_df.columns[all_pred_df.columns.str.contains('pred')]] = \
+        all_pred_df[all_pred_df.columns[all_pred_df.columns.str.contains('pred')]].\
+            applymap(lambda x: x.replace('[[', '').replace(']]', '')).astype('float16')
     all_pred_df = calculate_err(all_pred_df)
     all_pred_df1 = resahpe_all_pred(all_pred_df) # contains only the errors, add mean and uniform
 

@@ -9,16 +9,6 @@ from sklearn.model_selection import train_test_split
 
 qubits_dict = {1:'a', 2:'b', 3:'c', 4:'d'}
 
-def get_general_p_without_h(all_q, which_prob, psi, n_qubits=4, is_normalized = False):
-    '''calculate probability based on U and psi'''
-    P_ = MultiProjection(which_prob, all_q, n_qubits)
-    psi_final = np.dot(P_, psi)
-    # if is_normalized:
-        # psi_final /= np.linalg.norm(psi_final)
-    p_ = norm_psi(psi_final)
-    return p_
-
-
 def get_general_p_without_h_trial(all_q, which_prob, psi, n_qubits=4, is_normalized = False):
     '''calculate probability based on U and psi'''
     P_ = MultiProjection(which_prob, all_q, n_qubits)
@@ -77,7 +67,7 @@ def calculate_all_data_cross_val(use_U=True, with_mixing=True, use_neutral=False
             # find U for each question
             if use_U:
                 start = time.clock()
-                print('calculating U for %d' % qn)
+                print('calculating U for %d on train data' % qn)
                 res_temp = general_minimize(fun_to_minimize_grandH, args_=(all_q, train_q_data_qn, h_mix_type), x_0=np.zeros([10]), U = True)
                 end = time.clock()
                 print('question %d, U optimization took %.2f s' % (qn, end - start))
@@ -87,6 +77,7 @@ def calculate_all_data_cross_val(use_U=True, with_mixing=True, use_neutral=False
                 q_info[qn]['U'] = np.eye(16)
 
         ### predict on test users --> with NO {H_ab}
+        print('calculating errors on test data')
         U = q_info[qn]['U']
         for u_id, tu in test_q_data_qn.items():
             temp = {}
@@ -122,14 +113,15 @@ def calculate_all_data_cross_val(use_U=True, with_mixing=True, use_neutral=False
             temp['p_b_real'] = [tu[2]['p_b'][0]]
             temp['p_ab_real'] = [tu[2]['p_ab'][0]]
 
-            ### predicted probabilities with no_h
-            temp['p_a_pred_no_h'] = [get_general_p_without_h(all_q, '0', psi_dyn, n_qubits=4, is_normalized=True)]
-            temp['p_b_pred_no_h'] = [get_general_p_without_h(all_q, '1', psi_dyn, n_qubits=4, is_normalized=True)]
+            ### predicted probabilities
+            # full_h = [tu['h_q'][str(int(temp['q1'][0]) - 1)], tu['h_q'][str(int(temp['q2'][0]) - 1)], None]
+            h_a = [tu['h_q'][str(int(temp['q1'][0]) - 1)], None, None]
+            h_b = [None, tu['h_q'][str(int(temp['q2'][0]) - 1)], None]
+            temp['p_a_pred_U'] = [get_general_p(h_a, all_q, '0', psi_dyn, n_qubits=4, is_normalized=True).flatten()[0]]
+            temp['p_b_pred_U'] = [get_general_p(h_b, all_q, '1', psi_dyn, n_qubits=4, is_normalized=True).flatten()[0]]
 
-            ### predicted probabilities with h
-            full_h = [tu['h_q'][str(int(temp['q1'][0]) - 1)], tu['h_q'][str(int(temp['q2'][0]) - 1)], None]
-            temp['p_a_pred_with_h'] = [get_general_p(full_h, all_q, '0', psi_dyn, n_qubits=4, is_normalized=True)]
-            temp['p_b_pred_with_h'] = [get_general_p(full_h, all_q, '1', psi_dyn, n_qubits=4, is_normalized=True)]
+            temp['p_a_pred_I'] = [get_general_p(h_a, all_q, '0', psi_0, n_qubits=4, is_normalized=True).flatten()[0]]
+            temp['p_b_pred_I'] = [get_general_p(h_b, all_q, '1', psi_0, n_qubits=4, is_normalized=True).flatten()[0]]
 
             # ### joint probabilities
             # if q_info[qn]['fal'][0] == 1:
@@ -139,86 +131,67 @@ def calculate_all_data_cross_val(use_U=True, with_mixing=True, use_neutral=False
             # temp = pd.DataFrame(temp)
 
             ### calculate the error from the previous probabilities with NO U.
-            temp['p_a_err_pre']  = [np.abs(temp['p_a_real'][0] - temp['p_a_pre'][0])]
-            temp['p_b_err_pre']  = [np.abs(temp['p_b_real'][0] - temp['p_b_pre'][0])]
+            temp['p_a_err_real_pre']  = [np.abs(temp['p_a_real'][0] - temp['p_a_pre'][0])]
+            temp['p_b_err_real_pre']  = [np.abs(temp['p_b_real'][0] - temp['p_b_pre'][0])]
 
-            ### calculate the error from the predicted probabilities with(out) h(a,b).
-            temp['p_a_err_real_no_h']   = [np.abs(temp['p_a_real'][0] - temp['p_a_pred_no_h'][0])]
-            temp['p_b_err_real_no_h']   = [np.abs(temp['p_b_real'][0] - temp['p_b_pred_no_h'][0])]
+            ### calculate the error from the propogated state with U
+            temp['p_a_err_real_U'] = [np.abs(temp['p_a_real'][0] - temp['p_a_pred_U'][0])]
+            temp['p_b_err_real_U'] = [np.abs(temp['p_b_real'][0] - temp['p_b_pred_U'][0])]
 
-            temp['p_a_err_real_with_h'] = [np.abs(temp['p_a_real'][0] - temp['p_a_pred_with_h'][0])]
-            temp['p_b_err_real_with_h'] = [np.abs(temp['p_b_real'][0] - temp['p_b_pred_with_h'][0])]
+            ### calculate the error from the full 4 qubits state with I
+            temp['p_a_err_real_I'] = [np.abs(temp['p_a_real'][0] - temp['p_a_pred_I'][0])]
+            temp['p_b_err_real_I'] = [np.abs(temp['p_b_real'][0] - temp['p_b_pred_I'][0])]
 
             prediction_errors = pd.concat([prediction_errors,pd.DataFrame(temp)], axis = 0)
 
     prediction_errors.set_index('id', inplace=True)
     prediction_errors.to_csv('data/calc_U/cross_val_prediction_errors_%s.csv' % control_str)#index=False)
 
-            #   ### calculate h_ij...
-            # start = time.clock()
-            # print('building df_H, calculating h_ij for question 2')
-            #
-            # # calculate H_AB
-            # H_dict = {}
-            # full_user_list = []
-            # for u_id in user_list:
-            #     if u_id in all_data:
-            #         if use_neutral:
-            #             psi_0 = uniform_psi(n_qubits=4)
-            #         else:
-            #             psi_0 = np.dot(q_info[qn]['U'], all_data[u_id][1]['psi'])
-            #         p_real, d = sub_q_p(df, u_id, 2)
-            #         sub_data_q = get_question_H(psi_0, all_q, p_real,
-            #                                     [all_data[u_id]['h_q'][str(all_q[0])], all_data[u_id]['h_q'][str(all_q[1])]],
-            #                                     with_mixing, h_mix_type, fallacy_type = q_info[qn]['fal'][0])
-            #         all_data[u_id]['h_q'][str(all_q[0])+str(all_q[1])] = sub_data_q['h_ab']
-            #         all_data[u_id]['h_q'][str(all_q[0])] = sub_data_q['h_a']
-            #         all_data[u_id]['h_q'][str(all_q[1])] = sub_data_q['h_b']
-            #         H_dict[u_id] = []
-            #         for hs in h_names:
-            #             H_dict[u_id].append(all_data[u_id]['h_q'][hs])
-            #
-            # df_H = pd.DataFrame.from_dict(data=H_dict, orient='index')
-            # df_H.columns = ['A', 'B', 'C', 'D', 'AB', 'CD', 'pred']
-            # end = time.clock()
-            # print('question %d, building df_H time %.2f s' % (qn, end - start))
-            #
-            # start = time.clock()
-            # mtd = 'lr' #'ANN'
-            # print('calculating h_ij' + mtd)
-            # est = pred_h_ij(df_H, method = mtd)
-            # end = time.clock()
-            # print('question %d, h_ij prediction took %.2f s' % (qn, end - start))
-            #
-            # q_info[qn]['H_ols'] = est
-            #
-            # df_H.index = user_list
-            # if 'df_H_all' in locals():
-            #     df_H_all = df_H_all.append(df_H)
-            # else:
-            #     df_H_all = df_H.copy()
-            # # df_H_all = df_H_all.reset_index(drop=True)
-
-    # print('before saving pkl')
-    # pickle.dump(all_data, open('data/calc_U/all_data%s.pkl' % control_str, 'wb'))
-    # pickle.dump(q_info, open('data/calc_U/q_info%s.pkl' %control_str, 'wb'))
+    print('before saving pkl')
+    pickle.dump(all_data, open('data/calc_U/all_data%s.pkl' % control_str, 'wb'))
+    pickle.dump(q_info, open('data/calc_U/q_info%s.pkl' %control_str, 'wb'))
 
     # df_H_all.to_csv('data/calc_U/df_H%s.csv' % control_str)
 
+def main():
+    h_type = [0]
+    use_U_l = [True]
+    use_neutral_l = [False]
+    with_mixing_l = [True]
+    comb = product(h_type, use_U_l, use_neutral_l, with_mixing_l)
 
-h_type = [0]
-use_U_l = [True]
-use_neutral_l = [False]
-with_mixing_l = [True]
-comb = product(h_type, use_U_l, use_neutral_l, with_mixing_l)
+    calcU = True
+    # calcU = False
 
-for h_mix_type, use_U, use_neutral, with_mixing in comb:
+    if calcU:
 
-    print('Running:\tUse_U = {} |\tUse_Neutral = {} |\tWith_Mixing = {} |\th_mix_type = {}'.format(use_U,use_neutral,with_mixing, h_mix_type))
+        for h_mix_type, use_U, use_neutral, with_mixing in comb:
 
-    control_str = 'pred_df_U_%s_mixing_%s_neutral_%s_mix_type_%d.csv' % (use_U, with_mixing, use_neutral, h_mix_type)
-    # if os.path.isfile('./data/' + control_str):
-    #     print('Already calculated everything for this combination')
-    #     continue
+            print('Running:\tUse_U = {} |\tUse_Neutral = {} |\tWith_Mixing = {} |\th_mix_type = {}'.format(use_U,use_neutral,with_mixing, h_mix_type))
 
-    calculate_all_data_cross_val(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing, h_mix_type=h_mix_type)
+            control_str = 'pred_df_U_%s_mixing_%s_neutral_%s_mix_type_%d.csv' % (use_U, with_mixing, use_neutral, h_mix_type)
+            # if os.path.isfile('./data/' + control_str):
+            #     print('Already calculated everything for this combination')
+            #     continue
+
+            calculate_all_data_cross_val(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing, h_mix_type=h_mix_type)
+    else:
+        for h_mix_type, use_U, use_neutral, with_mixing in comb:
+            control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (use_U, with_mixing, use_neutral, h_mix_type)
+            prediction_errors = pd.read_csv('data/calc_U/cross_val_prediction_errors_%s.csv' % control_str)
+
+            ### list of the columns of the errors
+            err_cl = list(prediction_errors.columns[prediction_errors.columns.str.contains('err')])
+
+            ### group the errors by question
+            grouped = prediction_errors[err_cl + ['qn']].groupby('qn')
+
+            ### boxplot of the results
+            fig, ax = plt.subplots(1,1, figsize = (8,6))
+            grouped.boxplot(rot = 45, ax = ax)
+            plt.tight_layout(pad = 1)
+            print()
+
+
+if __name__ == '__main__':
+    main()

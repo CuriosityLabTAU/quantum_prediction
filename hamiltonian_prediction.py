@@ -76,16 +76,16 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True, h_mix
         h_a = h_a_and_b[0]
         h_b = h_a_and_b[1]
 
+    if fallacy_type == 1: # conjunction
+        fallacy_type = 'C'
+    elif fallacy_type == 2: # disjunction
+        fallacy_type = 'D'
+
+    all_P = fallacy_type
+
     if with_mixing:
         # find h_ab from the current question todo: change all_P = 'C' --> to fallacy type
         full_h = [None, None, 'x']
-
-        if fallacy_type == 1: # conjunction
-            fallacy_type = 'C'
-        elif fallacy_type == 2: # disjunction
-            fallacy_type = 'D'
-
-        all_P = fallacy_type
 
         res_temp = general_minimize(fun_to_minimize, args_=(p_real['A_B'], psi_0, full_h, all_q, all_P, 4, h_mix_type),
                                     x_0=np.array([0.0]))
