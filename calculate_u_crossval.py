@@ -64,7 +64,7 @@ def calculate_all_data_cross_val(use_U=True, with_mixing=True, use_neutral=False
             all_q = [int(q_info[qn]['q1'][0])-1, int(q_info[qn]['q2'][0])-1]
             h_names = ['0', '1', '2', '3', '01', '23', str(all_q[0]) + str(all_q[1])]
 
-            # find U for each question
+            # find U for each question #
             if use_U:
                 start = time.clock()
                 print('calculating U for %d on train data' % qn)
