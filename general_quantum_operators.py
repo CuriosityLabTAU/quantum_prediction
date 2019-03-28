@@ -98,13 +98,11 @@ def get_prob_single_q(psi_0, H_, q, n_qubits=2):
     return p_
 
 
-def get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4, h_mix_type = 0, is_normalized = False):
+def get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4, h_mix_type = 0):
     H_ = compose_H(full_h, all_q, n_qubits, h_mix_type)
     psi_dyn = get_psi(H_, psi_0)
     P_ = MultiProjection(all_P, all_q, n_qubits)
     psi_final = np.dot(P_, psi_dyn)
-    if is_normalized:
-        psi_final /= np.linalg.norm(psi_final)
     p_ = norm_psi(psi_final)
     return p_
 

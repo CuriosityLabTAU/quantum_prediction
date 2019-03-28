@@ -4,7 +4,7 @@ import pandas as pd
 
 from hamiltonian_prediction import *
 from sklearn.model_selection import train_test_split
-
+import seaborn as sns
 # psi_dyn = np.dot(U, psi_0)
 
 qubits_dict = {1:'a', 2:'b', 3:'c', 4:'d'}
@@ -31,7 +31,7 @@ def sub_sample_data(all_data, data_qn, df, users):
     return  data_qn
 
 
-def calculate_all_data_cross_val(use_U=True, with_mixing=True, use_neutral=False, h_mix_type = 0):
+def calculate_all_data_cross_val(use_U=True, with_mixing=True, use_neutral=False, h_mix_type = 0, i = None):
     '''cross validation only for the third question'''
 
     control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (use_U, with_mixing, use_neutral, h_mix_type)
@@ -117,11 +117,11 @@ def calculate_all_data_cross_val(use_U=True, with_mixing=True, use_neutral=False
             # full_h = [tu['h_q'][str(int(temp['q1'][0]) - 1)], tu['h_q'][str(int(temp['q2'][0]) - 1)], None]
             h_a = [tu['h_q'][str(int(temp['q1'][0]) - 1)], None, None]
             h_b = [None, tu['h_q'][str(int(temp['q2'][0]) - 1)], None]
-            temp['p_a_pred_U'] = [get_general_p(h_a, all_q, '0', psi_dyn, n_qubits=4, is_normalized=True).flatten()[0]]
-            temp['p_b_pred_U'] = [get_general_p(h_b, all_q, '1', psi_dyn, n_qubits=4, is_normalized=True).flatten()[0]]
+            temp['p_a_pred_U'] = [get_general_p(h_a, all_q, '0', psi_dyn, n_qubits=4).flatten()[0]]
+            temp['p_b_pred_U'] = [get_general_p(h_b, all_q, '1', psi_dyn, n_qubits=4).flatten()[0]]
 
-            temp['p_a_pred_I'] = [get_general_p(h_a, all_q, '0', psi_0, n_qubits=4, is_normalized=True).flatten()[0]]
-            temp['p_b_pred_I'] = [get_general_p(h_b, all_q, '1', psi_0, n_qubits=4, is_normalized=True).flatten()[0]]
+            temp['p_a_pred_I'] = [get_general_p(h_a, all_q, '0', psi_0, n_qubits=4).flatten()[0]]
+            temp['p_b_pred_I'] = [get_general_p(h_b, all_q, '1', psi_0, n_qubits=4).flatten()[0]]
 
             # ### joint probabilities
             # if q_info[qn]['fal'][0] == 1:
@@ -145,13 +145,41 @@ def calculate_all_data_cross_val(use_U=True, with_mixing=True, use_neutral=False
             prediction_errors = pd.concat([prediction_errors,pd.DataFrame(temp)], axis = 0)
 
     prediction_errors.set_index('id', inplace=True)
-    prediction_errors.to_csv('data/calc_U/cross_val_prediction_errors_%s.csv' % control_str)#index=False)
+    prediction_errors.to_csv('data/calc_U/cross_val_prediction_errors_%s_%d.csv' % (control_str, i))#index=False)
 
     print('before saving pkl')
-    pickle.dump(all_data, open('data/calc_U/all_data%s.pkl' % control_str, 'wb'))
-    pickle.dump(q_info, open('data/calc_U/q_info%s.pkl' %control_str, 'wb'))
+    pickle.dump(all_data, open('data/calc_U/all_data%s_%d.pkl' % (control_str, i), 'wb'))
+    pickle.dump(q_info, open('data/calc_U/q_info%s_%d.pkl' % (control_str, i), 'wb'))
 
     # df_H_all.to_csv('data/calc_U/df_H%s.csv' % control_str)
+
+def plot_errors(df):
+    '''Boxplot of the errors per question type.'''
+    ### list of the columns of the errors
+    err_cl = list(df.columns[df.columns.str.contains('err')])
+
+    ### take only the columns with the errors and question number
+    df1 = df[err_cl + ['qn']]
+
+    ### melt the data frame to: qn, err_type, err_value
+    df2 = pd.melt(df1, id_vars=['qn'], value_vars=err_cl, var_name='err_type', value_name='err_value')
+
+    ### boxplot of err to qn by err_type
+    sf = sns.factorplot(x="qn", hue='err_type', y="err_value", data=df2, kind="box")
+    sf.fig.suptitle('prediction error as function of which question was third\n by probability by prediction type (U, I, previous)')
+    sf.savefig('data/calc_U/err_boxplot.png', dpi = 300)
+
+
+def average_results(h_mix_type, use_U, use_neutral, with_mixing, num_of_repeats):
+    '''Combine all the data from num_of_repeats cross validations to one dataframe'''
+    control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (use_U, with_mixing, use_neutral, h_mix_type)
+    df_mean = pd.DataFrame()
+
+    ### adding one dataframe at a time.
+    for i in range(num_of_repeats):
+        prediction_errors = pd.read_csv('data/calc_U/cross_val_prediction_errors_%s_%d.csv' % (control_str, i))
+        df_mean = pd.concat((df_mean,prediction_errors), axis = 0)
+    return df_mean
 
 def main():
     h_type = [0]
@@ -162,7 +190,8 @@ def main():
 
     calcU = True
     # calcU = False
-
+    ### How many times to repeat the cross validation
+    num_of_repeats = 10
     if calcU:
 
         for h_mix_type, use_U, use_neutral, with_mixing in comb:
@@ -174,24 +203,20 @@ def main():
             #     print('Already calculated everything for this combination')
             #     continue
 
-            calculate_all_data_cross_val(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing, h_mix_type=h_mix_type)
+            for i in range(num_of_repeats):
+                print('Performing cross validation number %d / %d'%(i, num_of_repeats))
+                calculate_all_data_cross_val(use_U=use_U, use_neutral=use_neutral, with_mixing=with_mixing, h_mix_type=h_mix_type, i = i)
     else:
+        i = 0
         for h_mix_type, use_U, use_neutral, with_mixing in comb:
-            control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (use_U, with_mixing, use_neutral, h_mix_type)
-            prediction_errors = pd.read_csv('data/calc_U/cross_val_prediction_errors_%s.csv' % control_str)
+            # control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (use_U, with_mixing, use_neutral, h_mix_type)
+            # prediction_errors = pd.read_csv('data/calc_U/cross_val_prediction_errors_%s_%d.csv' % (control_str,i))
 
-            ### list of the columns of the errors
-            err_cl = list(prediction_errors.columns[prediction_errors.columns.str.contains('err')])
+            prediction_errors = average_results(h_mix_type, use_U, use_neutral, with_mixing, num_of_repeats)
 
-            ### group the errors by question
-            grouped = prediction_errors[err_cl + ['qn']].groupby('qn')
+            plot_errors(prediction_errors)
 
-            ### boxplot of the results
-            fig, ax = plt.subplots(1,1, figsize = (8,6))
-            grouped.boxplot(rot = 45, ax = ax)
-            plt.tight_layout(pad = 1)
-            print()
-
+            plt.show()
 
 if __name__ == '__main__':
     main()
