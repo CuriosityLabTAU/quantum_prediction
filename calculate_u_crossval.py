@@ -165,10 +165,43 @@ def plot_errors(df):
     df2 = pd.melt(df1, id_vars=['qn'], value_vars=err_cl, var_name='err_type', value_name='err_value')
 
     ### boxplot of err to qn by err_type
-    sf = sns.factorplot(x="qn", hue='err_type', y="err_value", data=df2, kind="box")
-    sf.fig.suptitle('prediction error as function of which question was third\n by probability by prediction type (U, I, previous)')
-    sf.savefig('data/calc_U/err_boxplot.png', dpi = 300)
+    g = sns.factorplot(x="qn", hue='err_type', y="err_value", data=df2, kind="box", size=4, aspect=2)
+    g.fig.suptitle('prediction error as function of which question was third\n by probability by prediction type (U, I, previous)')
+    g.savefig('data/calc_U/err_boxplot_per_qn_per_prob.png')
 
+    g1 = sns.factorplot(x="err_type", y="err_value", data=df2, kind="box", size=4, aspect=2)
+    g1.set_xticklabels(rotation=45)
+    g1.savefig('data/calc_U/err_boxplot_across_all_questions.png')
+
+    df3 = df2.copy()
+    df3['prob'] = 0
+    df3['prob'][df3['err_type'].str.contains('p_b')] = 1 # p_a --> 0
+    df3['err_type'][df3['err_type'].str.contains('_I')] = 'I'
+    df3['err_type'][df3['err_type'].str.contains('_U')] = 'U'
+    df3['err_type'][df3['err_type'].str.contains('_pre')] = 'pre'
+    df3['err'] = pd.Categorical(df3['err_type'], categories=df3['err_type'].unique()).codes
+    df3.to_csv('data/calc_U/00pred_err_per_prediction_type.csv')#index=False)
+
+    ### group per probability a/b.
+    gg = df3.groupby(['prob'])
+    ### group per probability a/b per question.
+    gg1 = df3.groupby(['prob','qn'])
+    ### run on all combinations of prob and q.
+    for p, q in product((0,1),(2,3,4,5)):
+        gg.get_group(p).to_csv('data/calc_U/00pred_err_per_prob_%d.csv' % p)
+        gg1.get_group((p, q)).to_csv('data/calc_U/00pred_err_per_prob_%d_per_qn_%d.csv' %(p,q))
+
+    g2 = sns.factorplot(x="err_type", y="err_value", data=df3, kind="box", size=4, aspect=2)
+    g2.set_xticklabels(rotation=45)
+    g2.savefig('data/calc_U/err_boxplot_across_all_questions_and_probs.png')
+
+    df4 = df3.pivot(columns='err_type', values='err_value')
+    df5 = pd.DataFrame()
+    df5['U'] = df4['U'].dropna().reset_index(drop=True)
+    df5['I'] = df4['I'].dropna().reset_index(drop=True)
+    df5['pre'] = df4['pre'].dropna().reset_index(drop=True)
+
+    df5.to_csv('data/calc_U/00cross_val_prediction_errors_per_prediction_type4anova.csv')#index=False)('data/calc_U/cross_val_prediction_errors_per_prediction_type.csv')#index=False)
 
 def average_results(h_mix_type, use_U, use_neutral, with_mixing, num_of_repeats):
     '''Combine all the data from num_of_repeats cross validations to one dataframe'''
@@ -179,6 +212,12 @@ def average_results(h_mix_type, use_U, use_neutral, with_mixing, num_of_repeats)
     for i in range(num_of_repeats):
         prediction_errors = pd.read_csv('data/calc_U/cross_val_prediction_errors_%s_%d.csv' % (control_str, i))
         df_mean = pd.concat((df_mean,prediction_errors), axis = 0)
+
+    df_mean.to_csv('data/calc_U/00cross_val_prediction_errors_sum.csv')#index=False)
+
+    for i, g in df_mean.groupby('qn'):
+        g.to_csv('data/calc_U/00cross_val_prediction_errors_qn_%d.csv' % (i))#index=False)
+
     return df_mean
 
 def main():
@@ -188,8 +227,9 @@ def main():
     with_mixing_l = [True]
     comb = product(h_type, use_U_l, use_neutral_l, with_mixing_l)
 
-    calcU = True
-    # calcU = False
+    # calcU = True
+    calcU = False
+
     ### How many times to repeat the cross validation
     num_of_repeats = 10
     if calcU:
