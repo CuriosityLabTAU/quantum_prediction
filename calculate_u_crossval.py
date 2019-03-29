@@ -187,9 +187,9 @@ def calculate_all_data_cross_val_kfold(use_U=True, with_mixing=True, use_neutral
 
             p_a_80 = []
             p_b_80 = []
-            for u in train_q_data_qn:
-                p_a_80.append([u[2]['p_a'][0]])
-                p_b_80.append([u[2]['p_b'][0]])
+            for u_id, tu in test_q_data_qn.items():
+                p_a_80.append(tu[2]['p_a'][0])
+                p_b_80.append(tu[2]['p_b'][0])
             p_a_80 = np.array(p_a_80).mean()
             p_b_80 = np.array(p_b_80).mean()
 
