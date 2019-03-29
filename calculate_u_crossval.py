@@ -185,6 +185,14 @@ def calculate_all_data_cross_val_kfold(use_U=True, with_mixing=True, use_neutral
             train_q_data_qn = sub_sample_data(all_data, train_q_data_qn, df, train_users)
             test_q_data_qn = sub_sample_data(all_data, test_q_data_qn, df, test_users)
 
+            p_a_80 = []
+            p_b_80 = []
+            for u in train_q_data_qn:
+                p_a_80.append([u[2]['p_a'][0]])
+                p_b_80.append([u[2]['p_b'][0]])
+            p_a_80 = np.array(p_a_80).mean()
+            p_b_80 = np.array(p_b_80).mean()
+
             if len(train_q_data_qn) > 0:
                 ### question qubits (-1) because if the range inside of some function
                 all_q = [int(q_info[qn]['q1'][0])-1, int(q_info[qn]['q2'][0])-1]
@@ -261,8 +269,8 @@ def calculate_all_data_cross_val_kfold(use_U=True, with_mixing=True, use_neutral
                 temp['p_b_err_real_I'] = [np.abs(temp['p_b_real'][0] - temp['p_b_pred_I'][0])]
 
                 ### calculate the error from the mean of 80 precent
-                temp['p_a_err_real_I'] = [np.abs(temp['p_a_real'][0] - temp['p_a_pred_I'][0])]
-                temp['p_b_err_real_I'] = [np.abs(temp['p_b_real'][0] - temp['p_b_pred_I'][0])]
+                temp['p_a_err_real_mean80'] = [np.abs(temp['p_a_real'][0] - p_a_80)]
+                temp['p_b_err_real_mean80'] = [np.abs(temp['p_b_real'][0] - p_b_80)]
 
                 prediction_errors = pd.concat([prediction_errors,pd.DataFrame(temp)], axis = 0)
 
