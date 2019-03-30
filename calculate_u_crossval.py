@@ -275,11 +275,11 @@ def calculate_all_data_cross_val_kfold(use_U=True, with_mixing=True, use_neutral
                 prediction_errors = pd.concat([prediction_errors,pd.DataFrame(temp)], axis = 0)
 
     prediction_errors.set_index('id', inplace=True)
-    prediction_errors.to_csv('data/calc_U/cross_val_prediction_errors_%s_%d.csv' % (control_str, i))#index=False)
+    prediction_errors.to_csv('data/calc_U/cross_val_prediction_errors_%s.csv' % (control_str))#index=False)
 
     print('before saving pkl')
-    pickle.dump(all_data, open('data/calc_U/all_data%s_%d.pkl' % (control_str, i), 'wb'))
-    pickle.dump(q_info, open('data/calc_U/q_info%s_%d.pkl' % (control_str, i), 'wb'))
+    pickle.dump(all_data, open('data/calc_U/all_data%s.pkl' % (control_str), 'wb'))
+    pickle.dump(q_info, open('data/calc_U/q_info%s.pkl' % (control_str), 'wb'))
 
     # df_H_all.to_csv('data/calc_U/df_H%s.csv' % control_str)
 
