@@ -310,6 +310,7 @@ def plot_errors(df):
     df3['err_type'][df3['err_type'].str.contains('_I')] = 'I'
     df3['err_type'][df3['err_type'].str.contains('_U')] = 'U'
     df3['err_type'][df3['err_type'].str.contains('_pre')] = 'pre'
+    df3['err_type'][df3['err_type'].str.contains('mean')] = 'mean80'
     df3['err'] = pd.Categorical(df3['err_type'], categories=df3['err_type'].unique()).codes
     df3.to_csv('data/calc_U/00pred_err_per_prediction_type.csv')#index=False)
 
@@ -358,8 +359,8 @@ def main():
     with_mixing_l = [True]
     comb = product(h_type, use_U_l, use_neutral_l, with_mixing_l)
 
-    calcU = True
-    # calcU = False
+    # calcU = True
+    calcU = False
 
     ### How many times to repeat the cross validation
     num_of_repeats = 10
@@ -382,10 +383,10 @@ def main():
     else:
         i = 0
         for h_mix_type, use_U, use_neutral, with_mixing in comb:
-            # control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (use_U, with_mixing, use_neutral, h_mix_type)
-            # prediction_errors = pd.read_csv('data/calc_U/cross_val_prediction_errors_%s_%d.csv' % (control_str,i))
+            control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (use_U, with_mixing, use_neutral, h_mix_type)
+            prediction_errors = pd.read_csv('data/calc_U/cross_val_prediction_errors_%s.csv' % (control_str))
 
-            prediction_errors = average_results(h_mix_type, use_U, use_neutral, with_mixing, num_of_repeats)
+            # prediction_errors = average_results(h_mix_type, use_U, use_neutral, with_mixing, num_of_repeats)
 
             plot_errors(prediction_errors)
 
