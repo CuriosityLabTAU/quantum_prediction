@@ -10,6 +10,7 @@ import seaborn as sns
 # psi_dyn = np.dot(U, psi_0)
 
 qubits_dict = {1:'a', 2:'b', 3:'c', 4:'d'}
+fal_dict = {1:'C', 2: 'D'}
 
 def get_general_p_without_h_trial(all_q, which_prob, psi, n_qubits=4, is_normalized = False):
     '''calculate probability based on U and psi'''
@@ -154,7 +155,8 @@ def calculate_all_data_cross_val(use_U=True, with_mixing=True, use_neutral=False
 
     # df_H_all.to_csv('data/calc_U/df_H%s.csv' % control_str)
 
-def calculate_all_data_cross_val_kfold(use_U=True, with_mixing=True, use_neutral=False, h_mix_type = 0, i = None):
+
+def calculate_all_data_cross_val_kfold(use_U=True, with_mixing=True, use_neutral=False, h_mix_type=0, i=None):
     '''cross validation only for the third question'''
 
     control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (use_U, with_mixing, use_neutral, h_mix_type)
@@ -162,8 +164,11 @@ def calculate_all_data_cross_val_kfold(use_U=True, with_mixing=True, use_neutral
     ### load data
     df = pd.read_csv('data/new_dataframe.csv', index_col=0)
     # df = df[df['user'].isin([0., 7., 8., 17.])]
-    fname2read = './data/all_data_before3_N{}_M{}_h{}.pkl'.format(str(use_neutral)[0], str(with_mixing)[0], int(h_mix_type))
+    fname2read = './data/all_data_before3_N{}_M{}_h{}.pkl'.format(str(use_neutral)[0], str(with_mixing)[0],
+                                                                  int(h_mix_type))
     all_data, user_same_q_list, all_q_data, q_info = pickle.load(open(fname2read, 'rb'))
+
+    df_h = pd.read_csv('data/df_H%s.csv' % control_str)
 
     # third question
     ### creating a dataframe to save all the predictions error --> for specific question group by 'qn' --> agg('mean')
@@ -174,10 +179,10 @@ def calculate_all_data_cross_val_kfold(use_U=True, with_mixing=True, use_neutral
         # go over all 4 types of questions
 
         ### split the users to test and train using kfold - each user will be one time in test
-        kf = KFold(n_splits= 10) # todo: num_of_repeats
+        kf = KFold(n_splits=10)  # todo: num_of_repeats
         kf.get_n_splits(user_list)
 
-        for train_index, test_index in kf.split(user_list):
+        for i, (train_index, test_index) in enumerate(kf.split(user_list)):
             train_users, test_users = user_list[train_index], user_list[test_index]
             train_q_data_qn = {}
             test_q_data_qn = {}
@@ -185,28 +190,72 @@ def calculate_all_data_cross_val_kfold(use_U=True, with_mixing=True, use_neutral
             train_q_data_qn = sub_sample_data(all_data, train_q_data_qn, df, train_users)
             test_q_data_qn = sub_sample_data(all_data, test_q_data_qn, df, test_users)
 
+            ### taking the mean of the probabilities of the 80 %
             p_a_80 = []
             p_b_80 = []
+            p_ab_80 = []
             for u_id, tu in test_q_data_qn.items():
                 p_a_80.append(tu[2]['p_a'][0])
                 p_b_80.append(tu[2]['p_b'][0])
+                p_ab_80.append(tu[2]['p_ab'][0])
             p_a_80 = np.array(p_a_80).mean()
             p_b_80 = np.array(p_b_80).mean()
+            p_ab_80 = np.array(p_b_80).mean()
 
             if len(train_q_data_qn) > 0:
                 ### question qubits (-1) because if the range inside of some function
-                all_q = [int(q_info[qn]['q1'][0])-1, int(q_info[qn]['q2'][0])-1]
+                all_q = [int(q_info[qn]['q1'][0]) - 1, int(q_info[qn]['q2'][0]) - 1]
                 h_names = ['0', '1', '2', '3', '01', '23', str(all_q[0]) + str(all_q[1])]
 
                 # find U for each question #
                 start = time.clock()
                 print('calculating U for %d on train data' % qn)
-                res_temp = general_minimize(fun_to_minimize_grandH, args_=(all_q, train_q_data_qn, h_mix_type), x_0=np.zeros([10]), U = True)
+                res_temp = general_minimize(fun_to_minimize_grandH, args_=(all_q, train_q_data_qn, h_mix_type),
+                                            x_0=np.zeros([10]), U=True)
                 end = time.clock()
                 print('question %d, U optimization took %.2f s' % (qn, end - start))
 
                 q_info[qn]['U'] = U_from_H(grandH_from_x(res_temp.x))
 
+                # calculate H_AB
+                print('calculating h_ab')
+                H_dict = {}
+                for u_id, tu in test_q_data_qn.items():
+                    if use_neutral:
+                        psi_0 = uniform_psi(n_qubits=4)
+                    else:
+                        psi_0 = np.dot(q_info[qn]['U'], tu[1]['psi'])
+
+                    p_real, d = sub_q_p(df, u_id, 2)
+                    sub_data_q = get_question_H(psi_0, all_q, p_real,
+                                                [tu['h_q'][str(all_q[0])],
+                                                 tu['h_q'][str(all_q[1])]],
+                                                with_mixing, h_mix_type, fallacy_type=q_info[qn]['fal'][0])
+                    tu['h_q'][str(all_q[0]) + str(all_q[1])] = sub_data_q['h_ab']
+                    # tu['h_q'][str(all_q[0])] = sub_data_q['h_a']
+                    # tu['h_q'][str(all_q[1])] = sub_data_q['h_b']
+                    H_dict[u_id] = []
+                    for hs in h_names:
+                        H_dict[u_id].append(tu['h_q'][hs])
+
+                df_H = pd.DataFrame.from_dict(data=H_dict, orient='index')
+                df_H.columns = ['A', 'B', 'C', 'D', 'AB', 'CD', 'pred']
+
+                start = time.clock()
+                mtd = 'lr'  # 'ANN'
+                print('calculating h_ij' + mtd)
+                est = pred_h_ij(df_H, method = mtd)
+                end = time.clock()
+                print('question %d, h_ij prediction took %.2f s' % (qn, end - start))
+
+                q_info[qn]['H_ols'] = est
+
+                # df_H.index = user_list
+                # if 'df_H_all' in locals():
+                #     df_H_all = df_H_all.append(df_H)
+                # else:
+                #     df_H_all = df_H.copy()
+                # # df_H_all = df_H_all.reset_index(drop=True)
 
             ### predict on test users --> with NO {H_ab}
             print('calculating errors on test data')
@@ -257,8 +306,8 @@ def calculate_all_data_cross_val_kfold(use_U=True, with_mixing=True, use_neutral
                 temp['p_b_pred_I'] = [get_general_p(h_b, all_q, '1', psi_0, n_qubits=4).flatten()[0]]
 
                 ### calculate the error from the previous probabilities with NO U.
-                temp['p_a_err_real_pre']  = [np.abs(temp['p_a_real'][0] - temp['p_a_pre'][0])]
-                temp['p_b_err_real_pre']  = [np.abs(temp['p_b_real'][0] - temp['p_b_pre'][0])]
+                temp['p_a_err_real_pre'] = [np.abs(temp['p_a_real'][0] - temp['p_a_pre'][0])]
+                temp['p_b_err_real_pre'] = [np.abs(temp['p_b_real'][0] - temp['p_b_pre'][0])]
 
                 ### calculate the error from the propogated state with U
                 temp['p_a_err_real_U'] = [np.abs(temp['p_a_real'][0] - temp['p_a_pred_U'][0])]
@@ -272,17 +321,45 @@ def calculate_all_data_cross_val_kfold(use_U=True, with_mixing=True, use_neutral
                 temp['p_a_err_real_mean80'] = [np.abs(temp['p_a_real'][0] - p_a_80)]
                 temp['p_b_err_real_mean80'] = [np.abs(temp['p_b_real'][0] - p_b_80)]
 
-                prediction_errors = pd.concat([prediction_errors,pd.DataFrame(temp)], axis = 0)
+                ### calculate the error from uniform
+                temp['p_a_err_real_uniform'] = [np.abs(temp['p_a_real'][0] - .5)]
+                temp['p_b_err_real_uniform'] = [np.abs(temp['p_b_real'][0] - .5)]
+
+                # use question H to generate h_ab
+                # q_info[qn]['H_ols']
+                h_names_gen = ['0', '1', '2', '3', '01', '23']
+                if with_mixing:
+                    all_h = {'one': []}
+                    for hs in h_names_gen:
+                        all_h['one'].append(tu['h_q'][hs])
+                    df_H = pd.DataFrame.from_dict(data=all_h, orient='index')
+                    df_H.columns = ['A', 'B', 'C', 'D', 'AB', 'CD']
+                    try:
+                        h_ab = q_info[qn]['H_ols'].predict(df_H).values[0]
+                    except:
+                        h_ab = q_info[qn]['H_ols'].predict(df_H)[0]
+                else:
+                    h_ab = 0.0
+
+                full_h = [tu['h_q'][str(int(temp['q1'][0]) - 1)], tu['h_q'][str(int(temp['q2'][0]) - 1)], h_ab]
+                temp['p_ab_ols']    = [get_general_p(full_h, all_q, fal_dict[q_info[qn]['fal'][0]], psi_dyn, n_qubits=4).flatten()[0]]
+                temp['p_ab_eye'] = [get_general_p(full_h, all_q, fal_dict[q_info[qn]['fal'][0]], psi_0, n_qubits=4).flatten()[0]]
+
+                ### prediction erros for p_ab
+                temp['p_ab_err_ols']    = [np.abs(temp['p_ab_real'][0] - temp['p_ab_ols'][0])]
+                temp['p_ab_err_eye'] = [np.abs(temp['p_ab_real'][0] - temp['p_ab_eye'][0])]
+
+
+                prediction_errors = pd.concat([prediction_errors, pd.DataFrame(temp)], axis=0)
+
+            print('end of cycle %d' % i)
+            pickle.dump(all_data, open('data/calc_U/all_data%s_%d.pkl' % (control_str, i), 'wb'))
+            pickle.dump(q_info, open('data/calc_U/q_info%s_%d.pkl' % (control_str, i), 'wb'))
 
     prediction_errors.set_index('id', inplace=True)
-    prediction_errors.to_csv('data/calc_U/cross_val_prediction_errors_%s.csv' % (control_str))#index=False)
-
-    print('before saving pkl')
-    pickle.dump(all_data, open('data/calc_U/all_data%s.pkl' % (control_str), 'wb'))
-    pickle.dump(q_info, open('data/calc_U/q_info%s.pkl' % (control_str), 'wb'))
+    prediction_errors.to_csv('data/calc_U/cross_val_prediction_errors_%s.csv' % (control_str))  # index=False)
 
     # df_H_all.to_csv('data/calc_U/df_H%s.csv' % control_str)
-
 
 def plot_errors(df):
     '''Boxplot of the errors per question type.'''
@@ -307,10 +384,11 @@ def plot_errors(df):
     df3 = df2.copy()
     df3['prob'] = 0
     df3['prob'][df3['err_type'].str.contains('p_b')] = 1 # p_a --> 0
-    df3['err_type'][df3['err_type'].str.contains('_I')] = 'I'
-    df3['err_type'][df3['err_type'].str.contains('_U')] = 'U'
-    df3['err_type'][df3['err_type'].str.contains('_pre')] = 'pre'
-    df3['err_type'][df3['err_type'].str.contains('mean')] = 'mean80'
+    df3['err_type'][df3['err_type'].str.contains('_I')]      = 'I'
+    df3['err_type'][df3['err_type'].str.contains('_U')]      = 'U'
+    df3['err_type'][df3['err_type'].str.contains('_pre')]    = 'pre'
+    df3['err_type'][df3['err_type'].str.contains('mean')]    = 'mean80'
+    df3['err_type'][df3['err_type'].str.contains('uniform')] = 'uniform'
     df3['err'] = pd.Categorical(df3['err_type'], categories=df3['err_type'].unique()).codes
     df3.to_csv('data/calc_U/00pred_err_per_prediction_type.csv')#index=False)
 

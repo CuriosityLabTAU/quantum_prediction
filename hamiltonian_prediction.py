@@ -92,7 +92,7 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True, h_mix
         # print(res_temp.fun)
         # h_ab = res_temp.x[0]
         h_ab = res_temp.x.flatten()[0]
-        print('error of minimization h_ab: ', res_temp.fun)
+        # print('error of minimization h_ab: ', res_temp.fun)
 
     else:
         h_ab = 0.0
@@ -208,7 +208,7 @@ def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False, h_mix_ty
                 res_temp = general_minimize(fun_to_minimize_grandH, args_=(all_q, all_q_data[qn], h_mix_type), x_0=np.zeros([10]), U = True)
                 end = time.clock()
                 print('question %d, U optimization took %.2f s' % (qn, end - start))
-
+                # todo: save res_temp.x
                 q_info[qn]['U'] = U_from_H(grandH_from_x(res_temp.x))
             else:
                 q_info[qn]['U'] = np.eye(16)
