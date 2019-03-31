@@ -17,7 +17,7 @@ def prob_from_psi_general_initial(all_P):
 
     full_h = [None, None, None]
     all_q = [0,1]
-    H_ = compose_H(full_h, all_q, n_qubits, h_mix_type)
+    H_ = compose_H(full_h, all_q, n_qubits)
     psi_dyn = get_psi(H_, psi_0)
     P_ = MultiProjection(all_P, all_q, n_qubits)
     psi_final = np.dot(P_, psi_dyn)

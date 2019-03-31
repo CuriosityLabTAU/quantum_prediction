@@ -84,7 +84,7 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True, h_mix
     all_P = fallacy_type
 
     if with_mixing:
-        # find h_ab from the current question todo: change all_P = 'C' --> to fallacy type
+        # find h_ab from the current question
         full_h = [None, None, 'x']
 
         res_temp = general_minimize(fun_to_minimize, args_=(p_real['A_B'], psi_0, full_h, all_q, all_P, 4, h_mix_type),
@@ -106,7 +106,7 @@ def get_question_H(psi_0, all_q, p_real, h_a_and_b=None, with_mixing=True, h_mix
 
     ### update the state and save {h_i} for the current question
     full_h = [h_a, h_b, h_ab]
-    total_H = compose_H(full_h, all_q, n_qubits=4, h_mix_type = h_mix_type)
+    total_H = compose_H(full_h, all_q, n_qubits=4)
     psi_final = get_psi(total_H, psi_0)
     sub_q_data['h_a'] = h_a
     sub_q_data['h_b'] = h_b
@@ -208,8 +208,9 @@ def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False, h_mix_ty
                 res_temp = general_minimize(fun_to_minimize_grandH, args_=(all_q, all_q_data[qn], h_mix_type), x_0=np.zeros([10]), U = True)
                 end = time.clock()
                 print('question %d, U optimization took %.2f s' % (qn, end - start))
-                # todo: save res_temp.x
+
                 q_info[qn]['U'] = U_from_H(grandH_from_x(res_temp.x))
+                q_info[qn]['U_params_h'] = [res_temp.x]
             else:
                 q_info[qn]['U'] = np.eye(16)
 
@@ -334,7 +335,7 @@ def generate_predictions(use_U=True, with_mixing=True, use_neutral=False, h_mix_
             else:
                 pred_p_ab = get_general_p(full_h, all_q, 'D', psi_0, n_qubits=4, h_mix_type = h_mix_type)
 
-            total_H = compose_H(full_h, all_q, n_qubits=4, h_mix_type = h_mix_type)
+            total_H = compose_H(full_h, all_q, n_qubits=4)
             psi_final = get_psi(total_H, psi_0)
 
             data[p_id] = {

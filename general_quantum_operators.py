@@ -28,14 +28,9 @@ def param_Hmix_old(g_):
     H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[1, 1], [1, -1]])
     return H_
 
-def param_Hmix(g_, h_type):
+def param_Hmix(g_):
     the_param = np.squeeze(g_)
-    if h_type == 0:
-        # H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[1, 1], [1, -1]])
-        # H_ = 1.0 / np.sqrt(1 + the_param * the_param) * np.matrix([[1, 1j * the_param], [-1j * the_param, 1]])
-        H_ = np.matrix([[1, 1j * the_param], [-1j * the_param, 1]])
-    # elif h_type == 1:
-    #     H_ = (np.squeeze(g_) / np.sqrt(2)) * np.matrix([[1, 0], [0, -1]]) + np.matrix([[0, 1], [1, 0]])
+    H_ = np.matrix([[1, 1j * the_param], [-1j * the_param, 1]])
 
     return H_
 
@@ -99,7 +94,7 @@ def get_prob_single_q(psi_0, H_, q, n_qubits=2):
 
 
 def get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4, h_mix_type = 0):
-    H_ = compose_H(full_h, all_q, n_qubits, h_mix_type)
+    H_ = compose_H(full_h, all_q, n_qubits, all_P)
     psi_dyn = get_psi(H_, psi_0)
     P_ = MultiProjection(all_P, all_q, n_qubits)
     psi_final = np.dot(P_, psi_dyn)
@@ -107,7 +102,7 @@ def get_general_p(full_h, all_q, all_P, psi_0, n_qubits=4, h_mix_type = 0):
     return p_
 
 
-def compose_H(full_h, all_q, n_qubits=4, h_mix_type = 0):
+def compose_H(full_h, all_q, n_qubits=4, fal = 'C'):
     # full_h = [h_a, h_b, h_mix]
     # all_q = [q1, q2]
     H_ = zero_H(n_qubits)
@@ -132,23 +127,23 @@ def compose_H(full_h, all_q, n_qubits=4, h_mix_type = 0):
     if full_h[2] == None:
         Hmix_ = np.zeros([2 ** n_qubits, 2 ** n_qubits])
     else:
-        Hmix_0 = param_Hmix(full_h[2], h_mix_type)
+        Hmix_0 = param_Hmix(full_h[2])
         mix = np.matrix(np.zeros([4,4]), dtype='complex64')
 
-        # for i in range(4):
-        #     for j in range(4):
-        #         if i<j:
-        #             mix[i, j] = Hmix_0[0, 1]
-        #         elif i>j:
-        #             mix[i, j] = Hmix_0[1, 0]
-        #         else:
-        #             mix[i, j] = 1.0
-        mix[0, 3] = Hmix_0[0, 1]
-        mix[1, 3] = Hmix_0[0, 1]
-        mix[2, 3] = Hmix_0[0, 1]
-        mix[3, 0] = Hmix_0[1, 0]
-        mix[3, 1] = Hmix_0[1, 0]
-        mix[3, 2] = Hmix_0[1, 0]
+        if fal == 'C':
+            mix[0, 3] = Hmix_0[0, 1]
+            mix[1, 3] = Hmix_0[0, 1]
+            mix[2, 3] = Hmix_0[0, 1]
+            mix[3, 0] = Hmix_0[1, 0]
+            mix[3, 1] = Hmix_0[1, 0]
+            mix[3, 2] = Hmix_0[1, 0]
+        elif fal == 'D':
+            mix[0, 1] = Hmix_0[0, 1]
+            mix[0, 2] = Hmix_0[0, 1]
+            mix[0, 3] = Hmix_0[0, 1]
+            mix[1, 0] = Hmix_0[1, 0]
+            mix[2, 0] = Hmix_0[1, 0]
+            mix[3, 0] = Hmix_0[1, 0]
         # mix[3, 3] = 1.0
 
         for q in range(n_qubits - 2):
