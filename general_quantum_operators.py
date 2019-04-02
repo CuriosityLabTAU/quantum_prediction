@@ -277,20 +277,23 @@ def find_where2multiple_h_param(num_of_qubits = 4, qubits = [1, 3], combo = [1, 
     return h_multipication_place == 1
 
 
-def create_H_from_x(x):
-    # H_x = np.matrix([[1, 0, 0, 0],
-    #                  [0, 1, x, 0],
-    #                  [0, x, 1, 0],
-    #                  [0, 0, 0, 1]])
-
+def create_H_from_x(x, fal ='C'):
     mix = np.matrix(np.zeros([4, 4]), dtype='complex64')
 
-    mix[0, 3] = 1j * x
-    mix[1, 3] = 1j * x
-    mix[2, 3] = 1j * x
-    mix[3, 0] = -1j * x
-    mix[3, 1] = -1j * x
-    mix[3, 2] = -1j * x
+    if fal == 'C':
+        mix[0, 3] = 1j * x
+        mix[1, 3] = 1j * x
+        mix[2, 3] = 1j * x
+        mix[3, 0] = -1j * x
+        mix[3, 1] = -1j * x
+        mix[3, 2] = -1j * x
+    elif fal =='D':
+        mix[0, 1] = 1j * x
+        mix[0, 2] = 1j * x
+        mix[0, 3] = 1j * x
+        mix[1, 0] = -1j * x
+        mix[2, 0] = -1j * x
+        mix[3, 0] = -1j * x
 
     H_x = mix.copy()
     return H_x

@@ -205,11 +205,11 @@ def calculate_all_data(use_U=True, with_mixing=True, use_neutral=False, h_mix_ty
 
                 start = time.clock()
                 print('calculating U')
-                res_temp = general_minimize(fun_to_minimize_grandH, args_=(all_q, all_q_data[qn], h_mix_type), x_0=np.zeros([10]), U = True)
+                res_temp = general_minimize(fun_to_minimize_grandH, args_=(all_q, all_q_data[qn], h_mix_type, q_info[qn]['fal']), x_0=np.zeros([10]), U = True)
                 end = time.clock()
                 print('question %d, U optimization took %.2f s' % (qn, end - start))
 
-                q_info[qn]['U'] = U_from_H(grandH_from_x(res_temp.x))
+                q_info[qn]['U'] = U_from_H(grandH_from_x(res_temp.x, q_info[qn]['fal']))
                 q_info[qn]['U_params_h'] = [res_temp.x]
             else:
                 q_info[qn]['U'] = np.eye(16)
@@ -431,7 +431,7 @@ def calculate_errors():
     for i_t, i_test in enumerate(user_test):
         test_data[i_t] = all_data[i_test]
     res_temp = minimize(fun_to_minimize_grandH, np.zeros([10]), args=(train_data, h_mix_type),
-                        method='SLSQP', bounds=None, options={'disp': False}) # todo: ***** missing all_q????? *******
+                        method='Powell', bounds=None, options={'disp': False}) # todo: ***** missing all_q????? *******
     print('train error: ', res_temp.fun)
     print(res_temp.x)
 
@@ -507,15 +507,15 @@ def show_results():
 
 def run_prediction():
     # h_type = [0, 1]
-    h_type = [0]
-    use_U_l = [True, False]
-    use_neutral_l = [False, True]
-    with_mixing_l = [True, False]
-
-    # use_U_l = [True]
-    # with_mixing_l = [True]
-    # use_neutral_l = [False]
     # h_type = [0]
+    # use_U_l = [True, False]
+    # use_neutral_l = [False, True]
+    # with_mixing_l = [True, False]
+
+    use_U_l = [True]
+    with_mixing_l = [True]
+    use_neutral_l = [False]
+    h_type = [0]
 
     test_code = False
 

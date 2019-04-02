@@ -7,6 +7,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 
 import seaborn as sns
+from scipy import stats
+
 # psi_dyn = np.dot(U, psi_0)
 
 qubits_dict = {1:'a', 2:'b', 3:'c', 4:'d'}
@@ -70,7 +72,7 @@ def calculate_all_data_cross_val(use_U=True, with_mixing=True, use_neutral=False
             if use_U:
                 start = time.clock()
                 print('calculating U for %d on train data' % qn)
-                res_temp = general_minimize(fun_to_minimize_grandH, args_=(all_q, train_q_data_qn, h_mix_type), x_0=np.zeros([10]), U = True)
+                res_temp = general_minimize(fun_to_minimize_grandH, args_=(all_q, train_q_data_qn, h_mix_type, q_info[qn]['fal']), x_0=np.zeros([10]), U = True)
                 end = time.clock()
                 print('question %d, U optimization took %.2f s' % (qn, end - start))
 
@@ -166,7 +168,7 @@ def calculate_all_data_cross_val_kfold(use_U=True, with_mixing=True, use_neutral
     # df = df[df['user'].isin([0., 7., 8., 17.])]
     fname2read = './data/all_data_before3_N{}_M{}_h{}.pkl'.format(str(use_neutral)[0], str(with_mixing)[0],
                                                                   int(h_mix_type))
-    all_data, user_same_q_list, all_q_data, q_info = pickle.load(open(fname2read, 'rb'))
+    all_data, user_same_q_list, all_q_data, q_info0 = pickle.load(open(fname2read, 'rb'))
 
     df_h = pd.read_csv('data/df_H%s.csv' % control_str)
 
@@ -174,6 +176,7 @@ def calculate_all_data_cross_val_kfold(use_U=True, with_mixing=True, use_neutral
     ### creating a dataframe to save all the predictions error --> for specific question group by 'qn' --> agg('mean')
     prediction_errors = pd.DataFrame()
 
+    u_paramas_df = pd.DataFrame()
     ### Run on all users that have the same third question.
     for qn, user_list in user_same_q_list.items():
         # go over all 4 types of questions
@@ -183,6 +186,7 @@ def calculate_all_data_cross_val_kfold(use_U=True, with_mixing=True, use_neutral
         kf.get_n_splits(user_list)
 
         for i, (train_index, test_index) in enumerate(kf.split(user_list)):
+            q_info = q_info0.copy()
             train_users, test_users = user_list[train_index], user_list[test_index]
             train_q_data_qn = {}
             test_q_data_qn = {}
@@ -210,12 +214,14 @@ def calculate_all_data_cross_val_kfold(use_U=True, with_mixing=True, use_neutral
                 # find U for each question #
                 start = time.clock()
                 print('calculating U for %d on train data' % qn)
-                res_temp = general_minimize(fun_to_minimize_grandH, args_=(all_q, train_q_data_qn, h_mix_type),
+                res_temp = general_minimize(fun_to_minimize_grandH, args_=(all_q, train_q_data_qn, h_mix_type, q_info[qn]['fal']),
                                             x_0=np.zeros([10]), U=True)
                 end = time.clock()
                 print('question %d, U optimization took %.2f s' % (qn, end - start))
 
                 q_info[qn]['U'] = U_from_H(grandH_from_x(res_temp.x))
+
+                q_info[qn]['U_params_h'] = [res_temp.x]
 
                 # calculate H_AB
                 print('calculating h_ab')
@@ -270,6 +276,7 @@ def calculate_all_data_cross_val_kfold(use_U=True, with_mixing=True, use_neutral
 
                 q1 = 'p_' + qubits_dict[temp['q1'][0]]
                 q2 = 'p_' + qubits_dict[temp['q2'][0]]
+                q12 = 'p_' + qubits_dict[temp['q1'][0]] + qubits_dict[temp['q2'][0]]
 
                 temp['U'] = [use_U]
 
@@ -346,15 +353,16 @@ def calculate_all_data_cross_val_kfold(use_U=True, with_mixing=True, use_neutral
                 temp['p_ab_eye'] = [get_general_p(full_h, all_q, fal_dict[q_info[qn]['fal'][0]], psi_0, n_qubits=4).flatten()[0]]
 
                 ### prediction erros for p_ab
-                temp['p_ab_err_ols']    = [np.abs(temp['p_ab_real'][0] - temp['p_ab_ols'][0])]
-                temp['p_ab_err_eye'] = [np.abs(temp['p_ab_real'][0] - temp['p_ab_eye'][0])]
-
+                temp['p_ab_err_u_mlr']    = [np.abs(temp['p_ab_real'][0] - temp['p_ab_ols'][0])]
+                temp['p_ab_err_i'] = [np.abs(temp['p_ab_real'][0] - temp['p_ab_eye'][0])]
+                temp['p_ab_err_real_m80'] = [np.abs(temp['p_ab_real'][0] - p_ab_80)]
+                temp['p_ab_err_real_uni'] = [np.abs(temp['p_ab_real'][0] - .5)]
 
                 prediction_errors = pd.concat([prediction_errors, pd.DataFrame(temp)], axis=0)
 
             print('end of cycle %d' % i)
-            pickle.dump(all_data, open('data/calc_U/all_data%s_%d.pkl' % (control_str, i), 'wb'))
-            pickle.dump(q_info, open('data/calc_U/q_info%s_%d.pkl' % (control_str, i), 'wb'))
+            pickle.dump(all_data, open('data/calc_U/all_data%s_q_%d_%d.pkl' % (control_str, qn, i), 'wb'))
+            pickle.dump(q_info, open('data/calc_U/q_info%s_q_%d_%d.pkl' % (control_str, qn, i), 'wb'))
 
     prediction_errors.set_index('id', inplace=True)
     prediction_errors.to_csv('data/calc_U/cross_val_prediction_errors_%s.csv' % (control_str))  # index=False)
@@ -430,6 +438,44 @@ def average_results(h_mix_type, use_U, use_neutral, with_mixing, num_of_repeats)
 
     return df_mean
 
+
+def h_u():
+    '''looking at the different h's for different questions from the kfold'''
+    control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (True, True, False, 0)
+    df_hs_u = pd.DataFrame()
+    for qn in (2,3,4,5):
+        for i in range(10):
+            fname2read = 'data/calc_U/q_info%s_q_%d_%d.pkl' % (control_str, qn, i)
+            q_info = pickle.load(open(fname2read, 'rb'))
+            if len(q_info[qn]) > 3:
+                ### saving to dataframe all the params
+                temp = np.concatenate(
+                    (np.array([qn]), q_info[2]['fal'], np.array([i]),
+                     q_info[qn]['q1'], q_info[qn]['q2'],
+                     q_info[2]['U_params_h'][0]),
+                    axis=0).reshape(1,15)
+                temp = pd.DataFrame(data= temp, columns = ['qn','run','fal','q1','q2'] + map(lambda x: 'h' +str(x),list(range(10))))
+                df_hs_u = pd.concat((df_hs_u, temp),axis = 0)
+    df_hs_u.reset_index(inplace=True,drop=True)
+    return df_hs_u
+
+
+def my_plot(x, y, **kwargs):
+    slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+    plt.plot(x, slope * x + intercept)
+    p = ''
+    if p_value < 0.05:
+        p = '*'
+    if p_value < 0.01:
+        p = '**'
+    if p_value < 0.001:
+        p = '***'
+    f = '%.2f x + %.2f' % (slope, intercept) + '{}'.format(p)
+    props = dict(boxstyle='round', facecolor='gainsboro', alpha=.7)
+    plt.text(0.0, 0.0, f, size=9, bbox=props)
+    plt.scatter(x, y, s = .5,alpha = .5, **kwargs)
+
+
 def main():
     h_type = [0]
     use_U_l = [True]
@@ -437,8 +483,8 @@ def main():
     with_mixing_l = [True]
     comb = product(h_type, use_U_l, use_neutral_l, with_mixing_l)
 
-    # calcU = True
-    calcU = False
+    calcU = True
+    # calcU = False
 
     ### How many times to repeat the cross validation
     num_of_repeats = 10
@@ -461,13 +507,21 @@ def main():
     else:
         i = 0
         for h_mix_type, use_U, use_neutral, with_mixing in comb:
-            control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (use_U, with_mixing, use_neutral, h_mix_type)
-            prediction_errors = pd.read_csv('data/calc_U/cross_val_prediction_errors_%s.csv' % (control_str))
+            # control_str = '_U_%s_mixing_%s_neutral_%s_mix_type_%d' % (use_U, with_mixing, use_neutral, h_mix_type)
+            # prediction_errors = pd.read_csv('data/calc_U/cross_val_prediction_errors_%s.csv' % (control_str))
+            #
+            # # prediction_errors = average_results(h_mix_type, use_U, use_neutral, with_mixing, num_of_repeats)
+            #
+            # plot_errors(prediction_errors)
+            #
+            # ### plot real probs vs. predicted probs
+            # for p in ['a', 'b']: #, 'ab'
+            #     df = prediction_errors[prediction_errors.columns[prediction_errors.columns.str.contains('p_%s_'%p)]]
+            #     g = sns.PairGrid(df)
+            #     g.map(my_plot)
 
-            # prediction_errors = average_results(h_mix_type, use_U, use_neutral, with_mixing, num_of_repeats)
-
-            plot_errors(prediction_errors)
-
+            ### look at the behavior of the parameters of U.
+            df_hs_u = h_u()
             plt.show()
 
 if __name__ == '__main__':

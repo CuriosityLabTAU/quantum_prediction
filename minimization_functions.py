@@ -17,8 +17,8 @@ def fun_to_minimize(h_, real_p_, psi_0, all_h, all_q, all_P, n_qubits=2, h_mix_t
     return err_
 
 
-def fun_to_minimize_grandH(x_, all_q, all_data, h_mix_type):
-    grand_U = U_from_H(grandH_from_x(x_))
+def fun_to_minimize_grandH(x_, all_q, all_data, h_mix_type, fal ='C'):
+    grand_U = U_from_H(grandH_from_x(x_, fal))
 
     err_ = []
     for data in all_data.values():
