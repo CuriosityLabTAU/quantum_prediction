@@ -178,6 +178,7 @@ def calculate_all_data_cross_val_kfold(use_U=True, with_mixing=True, use_neutral
 
     u_paramas_df = pd.DataFrame()
     ### Run on all users that have the same third question.
+    df_hs_u = pd.DataFrame()
     for qn, user_list in user_same_q_list.items():
         # go over all 4 types of questions
 
@@ -450,11 +451,11 @@ def h_u():
             if len(q_info[qn]) > 3:
                 ### saving to dataframe all the params
                 temp = np.concatenate(
-                    (np.array([qn]), q_info[2]['fal'], np.array([i]),
+                    (np.array([qn]), q_info[qn]['fal'], np.array([i]),
                      q_info[qn]['q1'], q_info[qn]['q2'],
-                     q_info[2]['U_params_h'][0]),
+                     q_info[qn]['U_params_h'][0]),
                     axis=0).reshape(1,15)
-                temp = pd.DataFrame(data= temp, columns = ['qn','run','fal','q1','q2'] + map(lambda x: 'h' +str(x),list(range(10))))
+                temp = pd.DataFrame(data= temp, columns = ['qn','fal','run','q1','q2'] + map(lambda x: 'h' +str(x),list(range(10))))
                 df_hs_u = pd.concat((df_hs_u, temp),axis = 0)
     df_hs_u.reset_index(inplace=True,drop=True)
     return df_hs_u
@@ -483,8 +484,8 @@ def main():
     with_mixing_l = [True]
     comb = product(h_type, use_U_l, use_neutral_l, with_mixing_l)
 
-    calcU = True
-    # calcU = False
+    # calcU = True
+    calcU = False
 
     ### How many times to repeat the cross validation
     num_of_repeats = 10
