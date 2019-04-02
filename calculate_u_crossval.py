@@ -458,7 +458,10 @@ def h_u():
                 temp = pd.DataFrame(data= temp, columns = ['qn','fal','run','q1','q2'] + map(lambda x: 'h' +str(x),list(range(10))))
                 df_hs_u = pd.concat((df_hs_u, temp),axis = 0)
     df_hs_u.reset_index(inplace=True,drop=True)
-    return df_hs_u
+    df_hs_u1 = pd.melt(df_hs_u, id_vars=['qn', 'fal', 'run', 'q1', 'q2'],
+                       value_vars=['h0', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7', 'h8', 'h9'],
+                       var_name='h', value_name='h_value')
+    return df_hs_u, df_hs_u1
 
 
 def my_plot(x, y, **kwargs):
@@ -522,7 +525,9 @@ def main():
             #     g.map(my_plot)
 
             ### look at the behavior of the parameters of U.
-            df_hs_u = h_u()
+            df_hs_u, df_hs_u_melted = h_u()
+            ### plot {h} params of U per question for 10 kfolds
+            g = sns.factorplot(x="qn", hue='h', y="h_value", data=df_hs_u_melted, kind="box", size=4, aspect=2)
             plt.show()
 
 if __name__ == '__main__':
