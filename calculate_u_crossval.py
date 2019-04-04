@@ -341,6 +341,8 @@ def h_u():
     df_hs_u1 = pd.melt(df_hs_u, id_vars=['qn', 'fal', 'run', 'q1', 'q2'],
                        value_vars=['h_a', 'h_b', 'h_c', 'h_d', 'h_ab', 'h_ac', 'h_ad', 'h_bc', 'h_bd', 'h_cd'],
                        var_name='h', value_name='h_value')
+    df_hs_u.to_csv('data/calc_U/df_hs_u.csv')
+    df_hs_u1.to_csv('data/calc_U/df_hs_u_melted.csv')
 
     ### remove outliers.
     df_hs_u1 = df_hs_u1[df_hs_u1['h_value'] > - 5]
