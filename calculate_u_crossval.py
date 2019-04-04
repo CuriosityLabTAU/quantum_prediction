@@ -370,8 +370,8 @@ def main():
     with_mixing_l = [True]
     comb = product(h_type, use_U_l, use_neutral_l, with_mixing_l)
 
-    calcU = True
-    # calcU = False
+    # calcU = True
+    calcU = False
 
     ### How many times to repeat the cross validation
     num_of_repeats = 10
