@@ -299,7 +299,7 @@ def create_H_from_x(x, fal ='C'):
     return H_x
 
 
-def grandH_from_x(x_, qubits = [1, 3]):
+def grandH_from_x(x_, fal = 'C'):
     H_ = np.kron(np.kron(np.kron(param_H(x_[0]), np.eye(2)), np.eye(2)), np.eye(2))
     H_ += np.kron(np.kron(np.kron(np.eye(2), param_H(x_[1])), np.eye(2)), np.eye(2))
     H_ += np.kron(np.kron(np.kron(np.eye(2), np.eye(2)), param_H(x_[2])), np.eye(2))
@@ -307,7 +307,7 @@ def grandH_from_x(x_, qubits = [1, 3]):
 
     ij = [[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]] # qubits pairs
     for i, r in enumerate(range(4,10)):
-        H_ij = np.kron(np.kron(create_H_from_x(x_[r]), np.eye(2)), np.eye(2))
+        H_ij = np.kron(np.kron(create_H_from_x(x_[r], fal), np.eye(2)), np.eye(2))
         current_order = ij[i] + list(set(np.arange(4)) - set(ij[i]))
         H_ij = reorganize_operator(current_order, H_ij)
         H_ += H_ij
