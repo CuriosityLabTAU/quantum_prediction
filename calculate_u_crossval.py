@@ -335,11 +335,11 @@ def h_u():
                      q_info[qn]['q1'], q_info[qn]['q2'],
                      q_info[qn]['U_params_h'][0]),
                     axis=0).reshape(1,15)
-                temp = pd.DataFrame(data= temp, columns = ['qn','fal','run','q1','q2'] + map(lambda x: 'h' +str(x),list(range(10))))
+                temp = pd.DataFrame(data= temp, columns = ['qn','fal','run','q1','q2'] + ['h_a', 'h_b', 'h_c', 'h_d', 'h_ab', 'h_ac', 'h_ad', 'h_bc', 'h_bd', 'h_cd'])
                 df_hs_u = pd.concat((df_hs_u, temp),axis = 0)
     df_hs_u.reset_index(inplace=True,drop=True)
     df_hs_u1 = pd.melt(df_hs_u, id_vars=['qn', 'fal', 'run', 'q1', 'q2'],
-                       value_vars=['h0', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7', 'h8', 'h9'],
+                       value_vars=['h_a', 'h_b', 'h_c', 'h_d', 'h_ab', 'h_ac', 'h_ad', 'h_bc', 'h_bd', 'h_cd'],
                        var_name='h', value_name='h_value')
 
     ### remove outliers.
