@@ -418,7 +418,7 @@ def main():
                 s = df_hs_u_melted[df_hs_u_melted['qn'] == i][['qn', 'fal', 'q1', 'q2']][-1:].values.flatten()
                 s1 = s1 + 'qn = %d, fal = %d, q1,q2 = %d, %d \n' % (s[0], s[1], s[2], s[3])
             print(s1)
-            # g = sns.factorplot(x="qn", hue='h', y="h_value", data=df_hs_u_melted, kind="box", size=4, aspect=2)
+            g = sns.factorplot(x="qn", hue='h', y="h_value", data=df_hs_u_melted, kind="box", size=4, aspect=2)
             g = sns.factorplot(x="h", hue='qn', y="h_value", data=df_hs_u_melted, kind="box", size=4, aspect=2)
 
             plt.show()
